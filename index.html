@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（カメラ復旧版）</title>
+    <title>黒板カメラアプリ（完全安定版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
@@ -49,8 +49,8 @@
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
     <button id="downloadButton">この画像を端末に保存する</button>
 
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
-    <input type="file" id="editFileInput" accept="image/*" style="display: none;">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    <input type="file" id="editFileInput" accept="image/*">
 
     <div id="resultContainer">
         <p id="statusText"></p>
@@ -70,12 +70,15 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
+        // カメラ入力エリアは画面上で見えないように隠す
+        cameraInput.style.display = 'none';
+        editFileInput.style.display = 'none';
+
         let currentOriginalImageSrc = null;
 
-        // 文字の自動折り返しと手動改行を安全に処理する関数
+        // 長文を折り返して描画する関数
         function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
             let currentY = startY;
-            // まず文章全体の強制改行（エンター）で分割
             let paragraphs = text.split('\n');
             
             for (let para of paragraphs) {
@@ -95,7 +98,7 @@
                     }
                 }
                 ctx.fillText(line, x, currentY);
-                currentY += lineSpacing; // 段落ごとの改行
+                currentY += lineSpacing;
             }
             return currentY;
         }
@@ -124,38 +127,39 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 4. 文字サイズ設定（大きめ 0.063 を維持）
+                // 4. 文字サイズ設定（大きめ 0.063）
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.063;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 5. 各項目の設定（行間を詰めるため微調整）
-                const lineSpacing = canvas.height * 0.035;  
+                // 5. 行間の設定（ご希望通りのメリハリ比率）
+                const lineSpacing = canvas.height * 0.026;  // 項目内の行間（ギュッと詰める）
+                const itemSpacing = canvas.height * 0.035;  // 項目間の隙間（1行あける）
                 const maxTextWidth = boardWidth * 0.90;
                 const textX = boardWidth * 0.05;
                 let currentY = canvas.height * 0.05;
 
                 // 撮影者名
                 ctx.fillText("撮影者：", textX, currentY);
-                currentY += lineSpacing;
+                currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('photographer').value, textX, currentY, maxTextWidth, lineSpacing);
-                currentY += lineSpacing * 0.2; // 項目間の隙間をスマートに
+                currentY += itemSpacing;
 
                 // 物件略称
                 ctx.fillText("物件略称：", textX, currentY);
-                currentY += lineSpacing;
+                currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('property').value, textX, currentY, maxTextWidth, lineSpacing);
-                currentY += lineSpacing * 0.2;
+                currentY += itemSpacing;
 
                 // 撮影現場
                 ctx.fillText("撮影現場：", textX, currentY);
-                currentY += lineSpacing;
+                currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('location').value, textX, currentY, maxTextWidth, lineSpacing);
-                currentY += lineSpacing * 0.2;
+                currentY += itemSpacing;
 
                 // 詳細
                 ctx.fillText("詳細：", textX, currentY);
-                currentY += lineSpacing;
+                currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('detail').value, textX, currentY, maxTextWidth, lineSpacing);
 
                 // 6. 日付を右下に配置
@@ -183,13 +187,20 @@
             return true;
         }
 
-        // ボタンのクリックイベント（確実にカメラを呼び出せるように修正）
+        // ★【最重要】ボタンを押したら余計な計算をせず、一瞬でカメラを起動する処理
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
                 cameraInput.click();
             }
         });
 
+        editButton.addEventListener('click', function() {
+            if (checkInputs()) {
+                editFileInput.click();
+            }
+        });
+
+        // 写真が撮影・選択されてから、初めて黒板の合成計算をスタートする
         cameraInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
@@ -199,12 +210,6 @@
                     drawBlackboard(currentOriginalImageSrc);
                 };
                 reader.readAsDataURL(file);
-            }
-        });
-
-        editButton.addEventListener('click', function() {
-            if (checkInputs()) {
-                editFileInput.click();
             }
         });
 
@@ -228,8 +233,7 @@
             link.href = finalImage.src;
             link.download = fileName;
             link.click();
-            
-            alert('端末への保存命令を出しました！ダウンロードフォルダ等を確認してください。');
+            alert('端末への保存命令を出しました！');
         });
     </script>
 
