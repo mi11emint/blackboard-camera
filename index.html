@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（完全安定版）</title>
+    <title>黒板カメラアプリ（全自動上書き編集版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
@@ -70,11 +70,11 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // カメラ入力エリアは画面上で見えないように隠す
         cameraInput.style.display = 'none';
         editFileInput.style.display = 'none';
 
         let currentOriginalImageSrc = null;
+        let isEditMode = false; // ★編集ボタンから選ばれた画像かどうかを判別するフラグ
 
         // 長文を折り返して描画する関数
         function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
@@ -107,17 +107,32 @@
             statusText.innerText = "画像を生成中...";
             const img = new Image();
             img.onload = function() {
-                const boardWidth = img.width * 0.35;
+                let originalPhotoWidth = img.width;
+                let srcX = 0;
+
+                // ★【新機能】編集モードかつ、すでにアプリで作った形（比率）の画像だった場合の処理
+                if (isEditMode) {
+                    // 本アプリで生成された画像は、全体の横幅が「写真の幅(100%) + 黒板の幅(35%) = 135%」になっています。
+                    // そのため、全体の横幅を 1.35 で割ることで、元の「純粋な写真部分」だけの横幅を逆算できます。
+                    originalPhotoWidth = img.width / 1.35;
+                    // 黒板の部分（左側の35%）を切り捨てるため、写真の読み込み開始位置を右にずらします。
+                    srcX = img.width - originalPhotoWidth;
+                }
+
+                // 新しく作成する黒板の横幅（純粋な写真の35%）
+                const boardWidth = originalPhotoWidth * 0.35;
                 
-                canvas.width = boardWidth + img.width;
+                // キャンバス全体のサイズを「新しい黒板の幅 + 純粋な写真の幅」にする
+                canvas.width = boardWidth + originalPhotoWidth;
                 canvas.height = img.height;
 
                 // 1. 左側を黒板（深緑）で塗りつぶし
                 ctx.fillStyle = "#004d25";
                 ctx.fillRect(0, 0, boardWidth, canvas.height);
 
-                // 2. 右側に写真を配置
-                ctx.drawImage(img, boardWidth, 0);
+                // 2. 右側に写真を配置（古い黒板が付いている場合は自動でカットされた写真が描画されます）
+                // drawImage(画像, 切り抜き開始X, 切り抜き開始Y, 切り抜き横幅, 切り抜き高さ, 貼り付けX, 貼り付けY, 貼り付け横幅, 貼り付け高さ)
+                ctx.drawImage(img, srcX, 0, originalPhotoWidth, img.height, boardWidth, 0, originalPhotoWidth, img.height);
 
                 // 3. 日付取得
                 const now = new Date();
@@ -127,14 +142,14 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 4. 文字サイズ設定（大きめ 0.075）
+                // 4. 文字サイズ設定（カスタムされた 0.080 を維持）
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 5. 行間の設定（メリハリ比率）
-                const lineSpacing = canvas.height * 0.040;  // 項目内の行間（ギュッと詰める）
-                const itemSpacing = canvas.height * 0.040;  // 項目間の隙間（1行あける）
+                // 5. 行間の設定（カスタムされた 0.040 を維持）
+                const lineSpacing = canvas.height * 0.040;  
+                const itemSpacing = canvas.height * 0.040;  
                 const maxTextWidth = boardWidth * 0.90;
                 const textX = boardWidth * 0.05;
                 let currentY = canvas.height * 0.05;
@@ -187,20 +202,20 @@
             return true;
         }
 
-        // ★【最重要】ボタンを押したら余計な計算をせず、一瞬でカメラを起動する処理
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
+                isEditMode = false; // ★通常モード
                 cameraInput.click();
             }
         });
 
         editButton.addEventListener('click', function() {
             if (checkInputs()) {
+                isEditMode = true; // ★編集（自動切り取り）モード
                 editFileInput.click();
             }
         });
 
-        // 写真が撮影・選択されてから、初めて黒板の合成計算をスタートする
         cameraInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
