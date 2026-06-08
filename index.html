@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（詳細手動改行版）</title>
+    <title>黒板カメラアプリ（カメラ復旧版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        
-        /* 入力欄のスタイル（1行入力用） */
         input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-        
-        /* ★詳細用の複数行入力欄（textarea）のスタイルを追加 */
         textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
         
         button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
@@ -76,26 +72,31 @@
 
         let currentOriginalImageSrc = null;
 
-        // 幅に合わせて自動で改行しながら描画する関数
-        function drawWrappedText(ctx, text, x, startY, maxWidth, lineSpacing) {
-            let words = text.split('');
-            let line = '';
+        // 文字の自動折り返しと手動改行を安全に処理する関数
+        function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
             let currentY = startY;
-
-            for (let n = 0; n < words.length; n++) {
-                let testLine = line + words[n];
-                let metrics = ctx.measureText(testLine);
-                let testWidth = metrics.width;
+            // まず文章全体の強制改行（エンター）で分割
+            let paragraphs = text.split('\n');
+            
+            for (let para of paragraphs) {
+                let words = para.split('');
+                let line = '';
                 
-                if (testWidth > maxWidth && n > 0) {
-                    ctx.fillText(line, x, currentY);
-                    line = words[n];
-                    currentY += lineSpacing;
-                } else {
-                    line = testLine;
+                for (let n = 0; n < words.length; n++) {
+                    let testLine = line + words[n];
+                    let testWidth = ctx.measureText(testLine).width;
+                    
+                    if (testWidth > maxWidth && n > 0) {
+                        ctx.fillText(line, x, currentY);
+                        line = words[n];
+                        currentY += lineSpacing;
+                    } else {
+                        line = testLine;
+                    }
                 }
+                ctx.fillText(line, x, currentY);
+                currentY += lineSpacing; // 段落ごとの改行
             }
-            ctx.fillText(line, x, currentY);
             return currentY;
         }
 
@@ -108,14 +109,14 @@
                 canvas.width = boardWidth + img.width;
                 canvas.height = img.height;
 
-                // 1. 左側の領域を全面深緑色（黒板）で塗りつぶす
+                // 1. 左側を黒板（深緑）で塗りつぶし
                 ctx.fillStyle = "#004d25";
                 ctx.fillRect(0, 0, boardWidth, canvas.height);
 
-                // 2. 右側の領域に、写真を一切削らずにそのまま描画する
+                // 2. 右側に写真を配置
                 ctx.drawImage(img, boardWidth, 0);
 
-                // 3. 日付・時刻の取得
+                // 3. 日付取得
                 const now = new Date();
                 const dateText = now.getFullYear() + '/' + 
                                  String(now.getMonth() + 1).padStart(2, '0') + '/' + 
@@ -123,4 +124,114 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 4. ★文字サイズをもう少しだけ大きく変更（0.055 から 0.063 に
+                // 4. 文字サイズ設定（大きめ 0.063 を維持）
+                ctx.fillStyle = "#ffffff";
+                const fontSize = boardWidth * 0.063;
+                ctx.font = "bold " + fontSize + "px sans-serif";
+
+                // 5. 各項目の設定（行間を詰めるため微調整）
+                const lineSpacing = canvas.height * 0.035;  
+                const maxTextWidth = boardWidth * 0.90;
+                const textX = boardWidth * 0.05;
+                let currentY = canvas.height * 0.05;
+
+                // 撮影者名
+                ctx.fillText("撮影者：", textX, currentY);
+                currentY += lineSpacing;
+                currentY = drawTextLines(ctx, document.getElementById('photographer').value, textX, currentY, maxTextWidth, lineSpacing);
+                currentY += lineSpacing * 0.2; // 項目間の隙間をスマートに
+
+                // 物件略称
+                ctx.fillText("物件略称：", textX, currentY);
+                currentY += lineSpacing;
+                currentY = drawTextLines(ctx, document.getElementById('property').value, textX, currentY, maxTextWidth, lineSpacing);
+                currentY += lineSpacing * 0.2;
+
+                // 撮影現場
+                ctx.fillText("撮影現場：", textX, currentY);
+                currentY += lineSpacing;
+                currentY = drawTextLines(ctx, document.getElementById('location').value, textX, currentY, maxTextWidth, lineSpacing);
+                currentY += lineSpacing * 0.2;
+
+                // 詳細
+                ctx.fillText("詳細：", textX, currentY);
+                currentY += lineSpacing;
+                currentY = drawTextLines(ctx, document.getElementById('detail').value, textX, currentY, maxTextWidth, lineSpacing);
+
+                // 6. 日付を右下に配置
+                ctx.fillText(dateText, boardWidth - ctx.measureText(dateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
+
+                // 7. 画面に表示
+                finalImage.src = canvas.toDataURL('image/jpeg');
+                finalImage.style.display = 'block';
+                downloadButton.style.display = 'block';
+                statusText.innerText = "画像の生成が完了しました！";
+            };
+            img.src = imageSrc;
+        }
+
+        function checkInputs() {
+            const photographer = document.getElementById('photographer').value;
+            const property = document.getElementById('property').value;
+            const location = document.getElementById('location').value;
+            const detail = document.getElementById('detail').value;
+
+            if (!photographer || !property || !location || !detail) {
+                alert('すべての項目を入力してください！');
+                return false;
+            }
+            return true;
+        }
+
+        // ボタンのクリックイベント（確実にカメラを呼び出せるように修正）
+        okButton.addEventListener('click', function() {
+            if (checkInputs()) {
+                cameraInput.click();
+            }
+        });
+
+        cameraInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentOriginalImageSrc = e.target.result;
+                    drawBlackboard(currentOriginalImageSrc);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        editButton.addEventListener('click', function() {
+            if (checkInputs()) {
+                editFileInput.click();
+            }
+        });
+
+        editFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentOriginalImageSrc = e.target.result;
+                    drawBlackboard(currentOriginalImageSrc);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        downloadButton.addEventListener('click', function() {
+            const link = document.createElement('a');
+            const now = new Date();
+            const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
+            
+            link.href = finalImage.src;
+            link.download = fileName;
+            link.click();
+            
+            alert('端末への保存命令を出しました！ダウンロードフォルダ等を確認してください。');
+        });
+    </script>
+
+</body>
+</html>
