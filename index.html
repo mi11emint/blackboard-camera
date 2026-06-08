@@ -42,7 +42,7 @@
 
     <div class="form-group">
         <label for="detail">詳細（自由に改行できます）</label>
-        <textarea id="detail" rows="3" placeholder="例：リモコン状況&#10;寸法 201×146&#10;要交換"></textarea>
+        <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置"></textarea>
     </div>
 
     <button id="okButton">OK（新規カメラ撮影）</button>
@@ -127,14 +127,14 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 4. 文字サイズ設定（大きめ 0.063）
+                // 4. 文字サイズ設定（大きめ 0.075）
                 ctx.fillStyle = "#ffffff";
-                const fontSize = boardWidth * 0.063;
+                const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 5. 行間の設定（ご希望通りのメリハリ比率）
-                const lineSpacing = canvas.height * 0.026;  // 項目内の行間（ギュッと詰める）
-                const itemSpacing = canvas.height * 0.035;  // 項目間の隙間（1行あける）
+                // 5. 行間の設定（メリハリ比率）
+                const lineSpacing = canvas.height * 0.040;  // 項目内の行間（ギュッと詰める）
+                const itemSpacing = canvas.height * 0.040;  // 項目間の隙間（1行あける）
                 const maxTextWidth = boardWidth * 0.90;
                 const textX = boardWidth * 0.05;
                 let currentY = canvas.height * 0.05;
