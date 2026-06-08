@@ -1,3 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黒板カメラアプリ（完成版）</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        /* ボタンのデザイン */
+        button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
+        #okButton { background-color: #007bff; } /* 青 */
+        #editButton { background-color: #17a2b8; } /* 水色 */
+        #downloadButton { background-color: #28a745; display: none; } /* 緑（初期は非表示） */
+        
+        #resultContainer { margin-top: 20px; text-align: center; }
+        #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
 
+    <h2>黒板カメラアプリ</h2>
+    
+    <div class="form-group">
+        <label for="photographer">撮影者名</label>
+        <input type="text" id="photographer" placeholder="例：山田 太郎">
+    </div>
 
+    <div class="form-group">
+        <label for="property">物件略称</label>
+        <input type="text" id="property" placeholder="例：A棟新築工事">
+    </div>
 
+    <div class="form-group">
+        <label for="location">撮影現場</label>
+        <input type="text" id="location" placeholder="例：2階 リビング">
+    </div>
+
+    <div class="form-group">
+        <label for="detail">詳細</label>
+        <input type="text" id="detail" placeholder="例：配管確認撮影">
+    </div>
+
+    <button id="okButton">OK（新規カメラ撮影）</button>
+    <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
+    <button id="downloadButton">この画像を端末に保存する</button>
+
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+    <input type="file" id="editFileInput" accept="image/*" style="display: none;">
+
+    <div id="resultContainer">
+        <p id="statusText"></p>
+        <img id="finalImage" alt="完成写真">
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const okButton = document.getElementById('okButton');
+        const editButton = document.getElementById('editButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const cameraInput = document.getElementById('cameraInput');
+        const editFileInput = document.getElementById('editFileInput');
+        const finalImage = document.getElementById('finalImage');
+        const statusText = document.getElementById('statusText');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 一時的に選択された元の写真を記憶しておくための変数
+        let currentOriginalImageSrc = null;
+
+        // 共通の合成処理関数
+        function drawBlackboard(imageSrc) {
+            statusText.innerText = "黒板を合成中...";
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                // 黒板のサイズと位置計算
+                const boardWidth = img.width * 0.35;
+                const boardHeight = boardWidth * 0.75;
+                const boardX = img.width * 0.03;
+                const boardY = img.height - boardHeight - (img.width * 0.03);
+
+                // 黒板を描画
+                ctx.fillStyle = "#004d25";
+                ctx.fillRect(boardX, boardY, boardWidth, boardHeight);
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = boardWidth * 0.02;
+                ctx.strokeRect(boardX, boardY, boardWidth, boardHeight);
+
+                // 日付取得
+                const now = new Date();
+                const dateText = now.getFullYear() + '/' + 
+                                 String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                                 String(now.getDate()).padStart(2, '0') + ' ' + 
+                                 String(now.getHours()).padStart(2, '0') + ':' + 
+                                 String(now.getMinutes()).padStart(2, '0');
+
+                // 文字の描画
+                ctx.fillStyle = "#ffffff";
+                const fontSize = boardWidth * 0.07;
+                ctx.font = "bold " + fontSize + "px sans-serif";
+
+                const pName = "撮影者: " + document.getElementById('photographer').value;
+                const pProp = "物件: " + document.getElementById('property').value;
+                const pLoc  = "現場: " + document.getElementById('location').value;
+                const pDet  = "詳細: " + document.getElementById('detail').value;
+                const pDate = "日時: " + dateText;
+
+                const textX = boardX + (boardWidth * 0.05);
+                const startY = boardY + (boardHeight * 0.15);
+                const lineSpacing = boardHeight * 0.18;
+
+                ctx.fillText(pName, textX, startY);
+                ctx.fillText(pProp, textX, startY + lineSpacing);
+                ctx.fillText(pLoc, textX, startY + lineSpacing * 2);
+                ctx.fillText(pDet, textX, startY + lineSpacing * 3);
+                ctx.fillText(pDate, textX, startY + lineSpacing * 4);
+
+                // 完成画像を画面に表示
+                finalImage.src = canvas.toDataURL('image/jpeg');
+                finalImage.style.display = 'block';
+                downloadButton.style.display = 'block'; // 保存ボタンを表示
+                statusText.innerText = "黒板の合成が完了しました！";
+            };
+            img.src = imageSrc;
+        }
+
+        // 入力フォームの空欄チェック関数
+        function checkInputs() {
+            const photographer = document.getElementById('photographer').value;
+            const property = document.getElementById('property').value;
+            const location = document.getElementById('location').value;
+            const detail = document.getElementById('detail').value;
+
+            if (!photographer || !property || !location || !detail) {
+                alert('すべての項目を入力してください！');
+                return false;
+            }
+            return true;
+        }
+
+        // ① OK（新規カメラ撮影）ボタン
+        okButton.addEventListener('click', function() {
+            if (checkInputs()) {
+                cameraInput.click();
+            }
+        });
+
+        // カメラ撮影後の処理
+        cameraInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentOriginalImageSrc = e.target.result; // 元の写真を記憶
+                    drawBlackboard(currentOriginalImageSrc);   // 合成を実行
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // ② 編集（既存画像を選択して上書き）ボタン
+        editButton.addEventListener('click', function() {
+            if (checkInputs()) {
+                editFileInput.click(); // カメラロールから画像を選ぶ画面を起動
+            }
+        });
+
+        // 編集用画像が選択された後の処理
+        editFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentOriginalImageSrc = e.target.result; // 新しく選んだ写真を記憶
+                    drawBlackboard(currentOriginalImageSrc);   // 新しい入力内容で上書き合成
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // ③ 端末に保存するボタンの処理
+        downloadButton.addEventListener('click', function() {
+            // 見えないダウンロード用のリンクを作って自動クリックする技
+            const link = document.createElement('a');
+            // ファイル名は「黒板写真_日時.jpg」にする
+            const now = new Date();
+            const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
+            
+            link.href = finalImage.src;
+            link.download = fileName;
+            link.click();
+            
+            alert('端末への保存命令を出しました！ダウンロードフォルダ等を確認してください。');
+        });
+    </script>
+
+</body>
+</html>
