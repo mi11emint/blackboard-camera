@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（完成版）</title>
+    <title>黒板カメラアプリ（左側黒板版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
         
-        /* ボタンのデザイン */
         button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
-        #okButton { background-color: #007bff; } /* 青 */
-        #editButton { background-color: #17a2b8; } /* 水色 */
-        #downloadButton { background-color: #28a745; display: none; } /* 緑（初期は非表示） */
+        #okButton { background-color: #007bff; }
+        #editButton { background-color: #17a2b8; }
+        #downloadButton { background-color: #28a745; display: none; }
         
         #resultContainer { margin-top: 20px; text-align: center; }
         #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -27,12 +26,12 @@
     
     <div class="form-group">
         <label for="photographer">撮影者名</label>
-        <input type="text" id="photographer" placeholder="例：山田 太郎">
+        <input type="text" id="photographer" placeholder="例：○○株式会社 山田">
     </div>
 
     <div class="form-group">
         <label for="property">物件略称</label>
-        <input type="text" id="property" placeholder="例：A棟新築工事">
+        <input type="text" id="property" placeholder="例：リバーライズ">
     </div>
 
     <div class="form-group">
@@ -42,7 +41,7 @@
 
     <div class="form-group">
         <label for="detail">詳細</label>
-        <input type="text" id="detail" placeholder="例：配管確認撮影">
+        <input type="text" id="detail" placeholder="例：リモコン状況 寸法201×146 要交換">
     </div>
 
     <button id="okButton">OK（新規カメラ撮影）</button>
@@ -70,32 +69,50 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // 一時的に選択された元の写真を記憶しておくための変数
         let currentOriginalImageSrc = null;
 
-        // 共通の合成処理関数
+        // 長文を幅に合わせて自動で改行しながら描画する関数
+        function drawWrappedText(ctx, text, x, startY, maxWidth, lineSpacing) {
+            let words = text.split('');
+            let line = '';
+            let currentY = startY;
+
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n];
+                let metrics = ctx.measureText(testLine);
+                let testWidth = metrics.width;
+                
+                if (testWidth > maxWidth && n > 0) {
+                    ctx.fillText(line, x, currentY);
+                    line = words[n];
+                    currentY += lineSpacing;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, x, currentY);
+            return currentY;
+        }
+
         function drawBlackboard(imageSrc) {
-            statusText.innerText = "黒板を合成中...";
+            statusText.innerText = "画像を生成中...";
             const img = new Image();
             img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
-                // 黒板のサイズと位置計算
+                // ★【計算の変更】黒板の横幅を写真の横幅の「35%」の大きさに設定
                 const boardWidth = img.width * 0.35;
-                const boardHeight = boardWidth * 0.75;
-                const boardX = img.width * 0.03;
-                const boardY = img.height - boardHeight - (img.width * 0.03);
+                
+                // キャンバス全体のサイズを「黒板の幅 + 写真の幅」にする（高さは写真に合わせる）
+                canvas.width = boardWidth + img.width;
+                canvas.height = img.height;
 
-                // 黒板を描画
+                // 1. 左側の領域を全面深緑色（黒板）で塗りつぶす
                 ctx.fillStyle = "#004d25";
-                ctx.fillRect(boardX, boardY, boardWidth, boardHeight);
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = boardWidth * 0.02;
-                ctx.strokeRect(boardX, boardY, boardWidth, boardHeight);
+                ctx.fillRect(0, 0, boardWidth, canvas.height);
 
-                // 日付取得
+                // 2. 右側の領域に、写真を一切削らずにそのまま描画する
+                ctx.drawImage(img, boardWidth, 0);
+
+                // 3. 日付・時刻の取得
                 const now = new Date();
                 const dateText = now.getFullYear() + '/' + 
                                  String(now.getMonth() + 1).padStart(2, '0') + '/' + 
@@ -103,37 +120,48 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 文字の描画
+                // 4. 文字のデザイン設定（イメージ画像に合わせたフォントサイズに調整）
                 ctx.fillStyle = "#ffffff";
-                const fontSize = boardWidth * 0.07;
+                const fontSize = boardWidth * 0.055;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                const pName = "撮影者: " + document.getElementById('photographer').value;
-                const pProp = "物件: " + document.getElementById('property').value;
-                const pLoc  = "現場: " + document.getElementById('location').value;
-                const pDet  = "詳細: " + document.getElementById('detail').value;
-                const pDate = "日時: " + dateText;
+                // 各項目のテキスト作成
+                const pName = "撮影者：\n" + document.getElementById('photographer').value;
+                const pProp = "物件略称：\n" + document.getElementById('property').value;
+                const pLoc  = "撮影現場：\n" + document.getElementById('location').value;
+                const pDet  = "詳細：\n" + document.getElementById('detail').value;
+                const pDate = dateText;
 
-                const textX = boardX + (boardWidth * 0.05);
-                const startY = boardY + (boardHeight * 0.15);
-                const lineSpacing = boardHeight * 0.18;
+                // 文字を書き出す位置の設定
+                const textX = boardWidth * 0.05;          // 黒板の左端から少し内側
+                let currentY = canvas.height * 0.05;     // 黒板の上端からスタート
+                const lineSpacing = canvas.height * 0.04;  // 行間（写真の高さに合わせてバランス調整）
+                const maxTextWidth = boardWidth * 0.90;   // 折り返し幅
 
-                ctx.fillText(pName, textX, startY);
-                ctx.fillText(pProp, textX, startY + lineSpacing);
-                ctx.fillText(pLoc, textX, startY + lineSpacing * 2);
-                ctx.fillText(pDet, textX, startY + lineSpacing * 3);
-                ctx.fillText(pDate, textX, startY + lineSpacing * 4);
+                // 5. 各項目を順番に描画（項目名と中身をスッキリ分けて改行連動）
+                const items = [pName, pProp, pLoc, pDet];
+                for(let item of items) {
+                    let lines = item.split('\n');
+                    // 「撮影者：」などの見出しを描画
+                    ctx.fillText(lines[0], textX, currentY);
+                    currentY += lineSpacing;
+                    // 入力された中身を自動改行しながら描画
+                    currentY = drawWrappedText(ctx, lines[1], textX, currentY, maxTextWidth, lineSpacing);
+                    currentY += lineSpacing * 1.5; // 項目ごとの間隔を少しあける
+                }
 
-                // 完成画像を画面に表示
+                // 6. 日付は一番右下にきれいに収まるように配置
+                ctx.fillText(pDate, boardWidth - ctx.measureText(pDate).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
+
+                // 7. 完成した画像を画面に表示
                 finalImage.src = canvas.toDataURL('image/jpeg');
                 finalImage.style.display = 'block';
-                downloadButton.style.display = 'block'; // 保存ボタンを表示
-                statusText.innerText = "黒板の合成が完了しました！";
+                downloadButton.style.display = 'block';
+                statusText.innerText = "画像の生成が完了しました！";
             };
             img.src = imageSrc;
         }
 
-        // 入力フォームの空欄チェック関数
         function checkInputs() {
             const photographer = document.getElementById('photographer').value;
             const property = document.getElementById('property').value;
@@ -147,51 +175,44 @@
             return true;
         }
 
-        // ① OK（新規カメラ撮影）ボタン
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
                 cameraInput.click();
             }
         });
 
-        // カメラ撮影後の処理
         cameraInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    currentOriginalImageSrc = e.target.result; // 元の写真を記憶
-                    drawBlackboard(currentOriginalImageSrc);   // 合成を実行
+                    currentOriginalImageSrc = e.target.result;
+                    drawBlackboard(currentOriginalImageSrc);
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // ② 編集（既存画像を選択して上書き）ボタン
         editButton.addEventListener('click', function() {
             if (checkInputs()) {
-                editFileInput.click(); // カメラロールから画像を選ぶ画面を起動
+                editFileInput.click();
             }
         });
 
-        // 編集用画像が選択された後の処理
         editFileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    currentOriginalImageSrc = e.target.result; // 新しく選んだ写真を記憶
-                    drawBlackboard(currentOriginalImageSrc);   // 新しい入力内容で上書き合成
+                    currentOriginalImageSrc = e.target.result;
+                    drawBlackboard(currentOriginalImageSrc);
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // ③ 端末に保存するボタンの処理
         downloadButton.addEventListener('click', function() {
-            // 見えないダウンロード用のリンクを作って自動クリックする技
             const link = document.createElement('a');
-            // ファイル名は「黒板写真_日時.jpg」にする
             const now = new Date();
             const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
             
