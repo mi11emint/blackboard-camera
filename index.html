@@ -3,22 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（全自動上書き編集版）</title>
+    <title>黒板カメラアプリ（エリア連動プロ版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
         textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
+        
+        .history-container { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
+        .history-btn { background-color: #e0e0e0; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .delete-history { color: red; font-weight: bold; margin-left: 5px; cursor: pointer; }
         
         button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
         #okButton { background-color: #007bff; }
         #editButton { background-color: #17a2b8; }
+        #clearButton { background-color: #6c757d; }
         #downloadButton { background-color: #28a745; display: none; }
         
         #resultContainer { margin-top: 20px; text-align: center; }
         #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         canvas { display: none; }
+        
+        .hidden-input { display: none !important; }
     </style>
 </head>
 <body>
@@ -28,11 +35,24 @@
     <div class="form-group">
         <label for="photographer">撮影者名</label>
         <input type="text" id="photographer" placeholder="例：○○株式会社 山田">
+        <div id="photographerHistory" class="history-container"></div>
     </div>
 
     <div class="form-group">
-        <label for="property">物件略称</label>
-        <input type="text" id="property" placeholder="例：リバーライズ">
+        <label for="areaSelect">エリア選択</label>
+        <select id="areaSelect" onchange="updatePropertyOptions()">
+            <option value="">-- エリアを選択してください --</option>
+            <option value="市内">市内</option>
+            <option value="東大阪">東大阪</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="propertySelect">物件略称（リストから選択）</label>
+        <select id="propertySelect" onchange="togglePropertyInput()" disabled>
+            <option value="">-- 先にエリアを選択してください --</option>
+        </select>
+        <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: 5px; display: none;">
     </div>
 
     <div class="form-group">
@@ -47,10 +67,11 @@
 
     <button id="okButton">OK（新規カメラ撮影）</button>
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
+    <button id="clearButton">入力欄をすべてクリア</button>
     <button id="downloadButton">この画像を端末に保存する</button>
 
-    <input type="file" id="cameraInput" accept="image/*" capture="environment">
-    <input type="file" id="editFileInput" accept="image/*">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
+    <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
 
     <div id="resultContainer">
         <p id="statusText"></p>
@@ -62,6 +83,7 @@
     <script>
         const okButton = document.getElementById('okButton');
         const editButton = document.getElementById('editButton');
+        const clearButton = document.getElementById('clearButton');
         const downloadButton = document.getElementById('downloadButton');
         const cameraInput = document.getElementById('cameraInput');
         const editFileInput = document.getElementById('editFileInput');
@@ -70,11 +92,110 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        cameraInput.style.display = 'none';
-        editFileInput.style.display = 'none';
-
         let currentOriginalImageSrc = null;
-        let isEditMode = false; // ★編集ボタンから選ばれた画像かどうかを判別するフラグ
+        let isEditMode = false; 
+
+        // --- 物件データの定義 ---
+        const propertyData = {
+            "市内": ["北堀江", "難波", "京町堀", "靱本町", "本町橋", "上本町", "BG鶴見", "SV東淀川"],
+            "東大阪": ["高井田", "E長堂", "BS華", "A小阪", "P小阪", "Aカジュアル", "GS八戸ノ里", "八戸ノ里"]
+        };
+
+        // エリアが選ばれたら、物件名リストを書き換える処理
+        function updatePropertyOptions() {
+            const areaSelect = document.getElementById('areaSelect');
+            const propertySelect = document.getElementById('propertySelect');
+            const propertyInput = document.getElementById('property');
+            
+            const selectedArea = areaSelect.value;
+            
+            // 一旦リセット
+            propertySelect.innerHTML = '';
+            propertyInput.style.display = 'none';
+            propertyInput.value = '';
+
+            if (!selectedArea) {
+                propertySelect.innerHTML = '<option value="">-- 先にエリアを選択してください --</option>';
+                propertySelect.disabled = true;
+                return;
+            }
+
+            // 物件リストの作成
+            propertySelect.disabled = false;
+            let optionsHtml = '<option value="">-- 物件を選択してください --</option>';
+            
+            // 定義したデータを元に選択肢を自動生成
+            propertyData[selectedArea].forEach(name => {
+                optionsHtml += `<option value="${name}">${name}</option>`;
+            });
+            // 最後に「その他」を追加
+            optionsHtml += '<option value="__CUSTOM__">その他（手入力）</option>';
+            
+            propertySelect.innerHTML = optionsHtml;
+        }
+
+        // 物件名リストで「その他」が選ばれたときの処理
+        function togglePropertyInput() {
+            const select = document.getElementById('propertySelect');
+            const input = document.getElementById('property');
+            if (select.value === "__CUSTOM__") {
+                input.style.display = "block";
+                input.value = "";
+            } else {
+                input.style.display = "none";
+                input.value = select.value; 
+            }
+        }
+
+        // --- 撮影者名の履歴管理処理 ---
+        let photographerList = JSON.parse(localStorage.getItem('photographerHistory')) || [];
+
+        function updateHistoryUI() {
+            const container = document.getElementById('photographerHistory');
+            container.innerHTML = '';
+            photographerList.forEach((name, index) => {
+                const btn = document.createElement('span');
+                btn.className = 'history-btn';
+                btn.innerHTML = `${name} <span class="delete-history" onclick="deleteHistory(${index}, event)">❌</span>`;
+                btn.addEventListener('click', function() {
+                    document.getElementById('photographer').value = name;
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function savePhotographer(name) {
+            if (!name) return;
+            photographerList = photographerList.filter(item => item !== name); 
+            photographerList.unshift(name); 
+            if (photographerList.length > 5) photographerList.pop(); 
+            localStorage.setItem('photographerHistory', JSON.stringify(photographerList));
+            updateHistoryUI();
+        }
+
+        function deleteHistory(index, event) {
+            event.stopPropagation(); 
+            photographerList.splice(index, 1);
+            localStorage.setItem('photographerHistory', JSON.stringify(photographerList));
+            updateHistoryUI();
+        }
+
+        updateHistoryUI();
+
+        // --- オールクリアボタンの処理 ---
+        clearButton.addEventListener('click', function() {
+            if (confirm('入力された内容をすべて消去しますか？')) {
+                document.getElementById('photographer').value = '';
+                document.getElementById('areaSelect').value = '';
+                document.getElementById('propertySelect').innerHTML = '<option value="">-- 先にエリアを選択してください --</option>';
+                document.getElementById('propertySelect').disabled = true;
+                document.getElementById('property').value = '';
+                document.getElementById('property').style.display = 'none';
+                document.getElementById('location').value = '';
+                document.getElementById('detail').value = '';
+            }
+        });
+
 
         // 長文を折り返して描画する関数
         function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
@@ -110,28 +231,21 @@
                 let originalPhotoWidth = img.width;
                 let srcX = 0;
 
-                // ★【新機能】編集モードかつ、すでにアプリで作った形（比率）の画像だった場合の処理
                 if (isEditMode) {
-                    // 本アプリで生成された画像は、全体の横幅が「写真の幅(100%) + 黒板の幅(35%) = 135%」になっています。
-                    // そのため、全体の横幅を 1.35 で割ることで、元の「純粋な写真部分」だけの横幅を逆算できます。
                     originalPhotoWidth = img.width / 1.35;
-                    // 黒板の部分（左側の35%）を切り捨てるため、写真の読み込み開始位置を右にずらします。
                     srcX = img.width - originalPhotoWidth;
                 }
 
-                // 新しく作成する黒板の横幅（純粋な写真の35%）
                 const boardWidth = originalPhotoWidth * 0.35;
                 
-                // キャンバス全体のサイズを「新しい黒板の幅 + 純粋な写真の幅」にする
                 canvas.width = boardWidth + originalPhotoWidth;
                 canvas.height = img.height;
 
-                // 1. 左側を黒板（深緑）で塗りつぶし
+                // 1. 左側を黒板（深緑）
                 ctx.fillStyle = "#004d25";
                 ctx.fillRect(0, 0, boardWidth, canvas.height);
 
-                // 2. 右側に写真を配置（古い黒板が付いている場合は自動でカットされた写真が描画されます）
-                // drawImage(画像, 切り抜き開始X, 切り抜き開始Y, 切り抜き横幅, 切り抜き高さ, 貼り付けX, 貼り付けY, 貼り付け横幅, 貼り付け高さ)
+                // 2. 右側に写真
                 ctx.drawImage(img, srcX, 0, originalPhotoWidth, img.height, boardWidth, 0, originalPhotoWidth, img.height);
 
                 // 3. 日付取得
@@ -142,12 +256,12 @@
                                  String(now.getHours()).padStart(2, '0') + ':' + 
                                  String(now.getMinutes()).padStart(2, '0');
 
-                // 4. 文字サイズ設定（カスタムされた 0.080 を維持）
+                // 4. 文字サイズ設定（大きめ 0.080）
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 5. 行間の設定（カスタムされた 0.040 を維持）
+                // 5. 行間の設定（メリハリ比率）
                 const lineSpacing = canvas.height * 0.040;  
                 const itemSpacing = canvas.height * 0.040;  
                 const maxTextWidth = boardWidth * 0.90;
@@ -204,14 +318,16 @@
 
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
-                isEditMode = false; // ★通常モード
+                savePhotographer(document.getElementById('photographer').value); 
+                isEditMode = false; 
                 cameraInput.click();
             }
         });
 
         editButton.addEventListener('click', function() {
             if (checkInputs()) {
-                isEditMode = true; // ★編集（自動切り取り）モード
+                savePhotographer(document.getElementById('photographer').value); 
+                isEditMode = true; 
                 editFileInput.click();
             }
         });
