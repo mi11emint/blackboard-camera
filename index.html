@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（エリア連動プロ版）</title>
+    <title>黒板カメラアプリ（履歴・復元フル装備版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
@@ -18,8 +18,10 @@
         button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
         #okButton { background-color: #007bff; }
         #editButton { background-color: #17a2b8; }
+        #restoreButton { background-color: #ffc107; color: #333; } /* ★直前呼び出しボタン（黄色・文字は黒） */
         #clearButton { background-color: #6c757d; }
         #downloadButton { background-color: #28a745; display: none; }
+        #shareButton { background-color: #ff9800; display: none; }
         
         #resultContainer { margin-top: 20px; text-align: center; }
         #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -43,7 +45,7 @@
         <select id="areaSelect" onchange="updatePropertyOptions()">
             <option value="">-- エリアを選択してください --</option>
             <option value="市内">市内</option>
-            <option value="東大阪">東大阪</option>
+            <option value="東空間">東大阪</option>
         </select>
     </div>
 
@@ -67,8 +69,9 @@
 
     <button id="okButton">OK（新規カメラ撮影）</button>
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
-    <button id="clearButton">入力欄をすべてクリア</button>
+    <button id="restoreButton">直前に入力した内容を呼び出す</button> <button id="clearButton">入力欄をすべてクリア</button>
     <button id="downloadButton">この画像を端末に保存する</button>
+    <button id="shareButton">この画像をLINE WORKS等に送る</button>
 
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
     <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
@@ -83,8 +86,10 @@
     <script>
         const okButton = document.getElementById('okButton');
         const editButton = document.getElementById('editButton');
+        const restoreButton = document.getElementById('restoreButton'); // ★追加
         const clearButton = document.getElementById('clearButton');
         const downloadButton = document.getElementById('downloadButton');
+        const shareButton = document.getElementById('shareButton');
         const cameraInput = document.getElementById('cameraInput');
         const editFileInput = document.getElementById('editFileInput');
         const finalImage = document.getElementById('finalImage');
@@ -94,6 +99,7 @@
 
         let currentOriginalImageSrc = null;
         let isEditMode = false; 
+        let currentFileForShare = null; 
 
         // --- 物件データの定義 ---
         const propertyData = {
@@ -101,15 +107,12 @@
             "東大阪": ["高井田", "E長堂", "BS華", "A小阪", "P小阪", "Aカジュアル", "GS八戸ノ里", "八戸ノ里"]
         };
 
-        // エリアが選ばれたら、物件名リストを書き換える処理
         function updatePropertyOptions() {
             const areaSelect = document.getElementById('areaSelect');
             const propertySelect = document.getElementById('propertySelect');
             const propertyInput = document.getElementById('property');
-            
             const selectedArea = areaSelect.value;
             
-            // 一旦リセット
             propertySelect.innerHTML = '';
             propertyInput.style.display = 'none';
             propertyInput.value = '';
@@ -120,21 +123,15 @@
                 return;
             }
 
-            // 物件リストの作成
             propertySelect.disabled = false;
             let optionsHtml = '<option value="">-- 物件を選択してください --</option>';
-            
-            // 定義したデータを元に選択肢を自動生成
             propertyData[selectedArea].forEach(name => {
                 optionsHtml += `<option value="${name}">${name}</option>`;
             });
-            // 最後に「その他」を追加
             optionsHtml += '<option value="__CUSTOM__">その他（手入力）</option>';
-            
             propertySelect.innerHTML = optionsHtml;
         }
 
-        // 物件名リストで「その他」が選ばれたときの処理
         function togglePropertyInput() {
             const select = document.getElementById('propertySelect');
             const input = document.getElementById('property');
@@ -182,9 +179,57 @@
 
         updateHistoryUI();
 
+        // --- ★【新機能】入力内容を保存・復元する処理 ---
+        function saveCurrentInputs() {
+            const inputs = {
+                photographer: document.getElementById('photographer').value,
+                area: document.getElementById('areaSelect').value,
+                propertySelect: document.getElementById('propertySelect').value,
+                propertyRaw: document.getElementById('property').value,
+                location: document.getElementById('location').value,
+                detail: document.getElementById('detail').value
+            };
+            localStorage.setItem('lastFormInputs', JSON.stringify(inputs));
+        }
+
+        restoreButton.addEventListener('click', function() {
+            const savedData = localStorage.getItem('lastFormInputs');
+            if (!savedData) {
+                alert('直前の入力データが見つかりません。');
+                return;
+            }
+            
+            const inputs = JSON.parse(savedData);
+            
+            // 各フォームに値を復元
+            document.getElementById('photographer').value = inputs.photographer || '';
+            document.getElementById('areaSelect').value = inputs.area || '';
+            
+            // エリア連動リストを一度手動で更新
+            updatePropertyOptions();
+            
+            // 物件セレクトと手入力欄の復元
+            if (inputs.propertySelect) {
+                document.getElementById('propertySelect').value = inputs.propertySelect;
+                if (inputs.propertySelect === '__CUSTOM__') {
+                    document.getElementById('property').style.display = 'block';
+                    document.getElementById('property').value = inputs.propertyRaw || '';
+                } else {
+                    document.getElementById('property').style.display = 'none';
+                    document.getElementById('property').value = inputs.propertySelect;
+                }
+            }
+            
+            document.getElementById('location').value = inputs.location || '';
+            document.getElementById('detail').value = inputs.detail || '';
+        });
+
         // --- オールクリアボタンの処理 ---
         clearButton.addEventListener('click', function() {
             if (confirm('入力された内容をすべて消去しますか？')) {
+                // 消去する前に、念のため現在の状態を「直前の内容」として保存しておく（救済用）
+                saveCurrentInputs();
+                
                 document.getElementById('photographer').value = '';
                 document.getElementById('areaSelect').value = '';
                 document.getElementById('propertySelect').innerHTML = '<option value="">-- 先にエリアを選択してください --</option>';
@@ -195,7 +240,6 @@
                 document.getElementById('detail').value = '';
             }
         });
-
 
         // 長文を折り返して描画する関数
         function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
@@ -294,11 +338,22 @@
                 // 6. 日付を右下に配置
                 ctx.fillText(dateText, boardWidth - ctx.measureText(dateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
 
-                // 7. 画面に表示
-                finalImage.src = canvas.toDataURL('image/jpeg');
-                finalImage.style.display = 'block';
-                downloadButton.style.display = 'block';
-                statusText.innerText = "画像の生成が完了しました！";
+                // 7. 画面に表示 & 共有用データ作成
+                canvas.toBlob(function(blob) {
+                    const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
+                    
+                    currentFileForShare = new File([blob], fileName, { type: "image/jpeg" });
+                    
+                    finalImage.src = URL.createObjectURL(blob);
+                    finalImage.style.display = 'block';
+                    downloadButton.style.display = 'block';
+                    
+                    if (navigator.canShare && navigator.canShare({ files: [currentFileForShare] })) {
+                        shareButton.style.display = 'block';
+                    }
+                    
+                    statusText.innerText = "画像の生成が完了しました！";
+                }, 'image/jpeg');
             };
             img.src = imageSrc;
         }
@@ -319,6 +374,7 @@
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
                 savePhotographer(document.getElementById('photographer').value); 
+                saveCurrentInputs(); // ★撮影時に現在の入力を記憶
                 isEditMode = false; 
                 cameraInput.click();
             }
@@ -327,6 +383,7 @@
         editButton.addEventListener('click', function() {
             if (checkInputs()) {
                 savePhotographer(document.getElementById('photographer').value); 
+                saveCurrentInputs(); // ★編集時に現在の入力を記憶
                 isEditMode = true; 
                 editFileInput.click();
             }
@@ -365,6 +422,18 @@
             link.download = fileName;
             link.click();
             alert('端末への保存命令を出しました！');
+        });
+
+        shareButton.addEventListener('click', function() {
+            if (currentFileForShare) {
+                navigator.share({
+                    files: [currentFileForShare],
+                    title: '黒板写真',
+                    text: '黒板カメラアプリから共有された画像です'
+                }).catch(err => {
+                    console.log("共有がキャンセルされました", err);
+                });
+            }
         });
     </script>
 
