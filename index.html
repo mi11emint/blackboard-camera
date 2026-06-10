@@ -18,7 +18,7 @@
         button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
         #okButton { background-color: #007bff; }
         #editButton { background-color: #17a2b8; }
-        #restoreButton { background-color: #ffc107; color: #333; } /* ★直前呼び出しボタン（黄色・文字は黒） */
+        #restoreButton { background-color: #ffc107; color: #333; }
         #clearButton { background-color: #6c757d; }
         #downloadButton { background-color: #28a745; display: none; }
         #shareButton { background-color: #ff9800; display: none; }
@@ -45,8 +45,7 @@
         <select id="areaSelect" onchange="updatePropertyOptions()">
             <option value="">-- エリアを選択してください --</option>
             <option value="市内">市内</option>
-            <option value="東空間">東大阪</option>
-        </select>
+            <option value="東大阪">東大阪</option> </select>
     </div>
 
     <div class="form-group">
@@ -69,7 +68,8 @@
 
     <button id="okButton">OK（新規カメラ撮影）</button>
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
-    <button id="restoreButton">直前に入力した内容を呼び出す</button> <button id="clearButton">入力欄をすべてクリア</button>
+    <button id="restoreButton">直前に入力した内容を呼び出す</button>
+    <button id="clearButton">入力欄をすべてクリア</button>
     <button id="downloadButton">この画像を端末に保存する</button>
     <button id="shareButton">この画像をLINE WORKS等に送る</button>
 
@@ -86,7 +86,7 @@
     <script>
         const okButton = document.getElementById('okButton');
         const editButton = document.getElementById('editButton');
-        const restoreButton = document.getElementById('restoreButton'); // ★追加
+        const restoreButton = document.getElementById('restoreButton');
         const clearButton = document.getElementById('clearButton');
         const downloadButton = document.getElementById('downloadButton');
         const shareButton = document.getElementById('shareButton');
@@ -179,7 +179,7 @@
 
         updateHistoryUI();
 
-        // --- ★【新機能】入力内容を保存・復元する処理 ---
+        // --- 入力内容を保存・復元する処理 ---
         function saveCurrentInputs() {
             const inputs = {
                 photographer: document.getElementById('photographer').value,
@@ -201,14 +201,11 @@
             
             const inputs = JSON.parse(savedData);
             
-            // 各フォームに値を復元
             document.getElementById('photographer').value = inputs.photographer || '';
             document.getElementById('areaSelect').value = inputs.area || '';
             
-            // エリア連動リストを一度手動で更新
             updatePropertyOptions();
             
-            // 物件セレクトと手入力欄の復元
             if (inputs.propertySelect) {
                 document.getElementById('propertySelect').value = inputs.propertySelect;
                 if (inputs.propertySelect === '__CUSTOM__') {
@@ -227,7 +224,6 @@
         // --- オールクリアボタンの処理 ---
         clearButton.addEventListener('click', function() {
             if (confirm('入力された内容をすべて消去しますか？')) {
-                // 消去する前に、念のため現在の状態を「直前の内容」として保存しておく（救済用）
                 saveCurrentInputs();
                 
                 document.getElementById('photographer').value = '';
@@ -374,7 +370,7 @@
         okButton.addEventListener('click', function() {
             if (checkInputs()) {
                 savePhotographer(document.getElementById('photographer').value); 
-                saveCurrentInputs(); // ★撮影時に現在の入力を記憶
+                saveCurrentInputs(); 
                 isEditMode = false; 
                 cameraInput.click();
             }
@@ -383,7 +379,7 @@
         editButton.addEventListener('click', function() {
             if (checkInputs()) {
                 savePhotographer(document.getElementById('photographer').value); 
-                saveCurrentInputs(); // ★編集時に現在の入力を記憶
+                saveCurrentInputs(); 
                 isEditMode = true; 
                 editFileInput.click();
             }
