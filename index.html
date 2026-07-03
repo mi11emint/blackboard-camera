@@ -198,24 +198,42 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             overflow: hidden;
         }
-        .preview-layout { display: flex; width: 100%; aspect-ratio: 1.35 / 1; }
+       .preview-layout { display: flex; width: 100%; }
         
+        /* 不要な繰り返しを削除し、スッキリ整理しました */
         .preview-board {
-            width: 26%; padding: 3% 2%; text-align: left; font-size: 2.8vw; font-weight: bold; color: white;
-            line-height: 1.4; display: flex; flex-direction: column; justify-content: flex-start;
-            box-sizing: border-box; word-break: break-all; white-space: pre-wrap; position: relative; user-select: none;
+            width: 26%; 
+            padding: 4% 2%; 
+            text-align: left; 
+            font-size: 8px; 
+            font-weight: bold; 
+            color: white;
+            line-height: 1.4; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-start;
+            box-sizing: border-box; 
+            word-break: break-all; 
+            white-space: pre-wrap; 
+            position: relative; 
+            user-select: none;
         }
+
         .preview-board-item { 
-    margin-bottom: 6%; 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.4); /* うっすらとした白線を追加 */
+            margin-bottom: 6%; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4); /* 白線 */
+            padding-bottom: 4%;                                 
+        }
     padding-bottom: 4%;                                 /* 線と文字の間隔を調整 */
 }
         .preview-board-title { color: #fff; opacity: 0.85; }
         .preview-board-text { color: #fff; padding-left: 2px; }
         .preview-board-date { position: absolute; bottom: 3%; right: 5%; font-size: 2vw; opacity: 0.85; }
         
-        .preview-photo-area { width: 74%; background-color: #333; position: relative; overflow: hidden; }
-        .preview-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .preview-photo-area { width: 74%; background-color: #333; position: relative; }
+        
+        /* height: auto にして写真本来の大きさを100%表示します */
+        .preview-photo { width: 100%; height: auto; display: block; }
         
         /* 手書き用キャンバス（写真の上にピッタリ重ねる） */
         .drawing-canvas {
