@@ -316,7 +316,7 @@
             </div>
 
             <div class="menu-list">
-                <div id="editMenuBtn" class="menu-item">写 真 編 集</div>
+                <div id="editMenuBtn" class="menu-item">写 真 合 成</div>
                 <div id="drawMenuBtn" class="menu-item">手 書 き</div>
                 <div id="eraserMenuBtn" class="menu-item">消 し ゴ ム</div>
                 <div id="commitMenuBtn" class="menu-item" style="font-weight: 900;">描 画 確 定</div>
@@ -695,7 +695,21 @@
         }
 
         // カメラ起動
+        // カメラ起動（未入力チェック付き）
         okButton.addEventListener('click', function() {
+            // 各入力欄の値を取得（前後の余白を削除）
+            const photographer = document.getElementById('photographer').value.trim();
+            const area = document.getElementById('areaSelect').value;
+            const property = document.getElementById('property').value.trim();
+            const location = document.getElementById('location').value.trim();
+            const detail = document.getElementById('detail').value.trim();
+
+            // 1つでも空の項目があれば警告を出して処理を中断する
+            if (!photographer || !area || !property || !location || !detail) {
+                alert('【入力エラー】\n撮影者、エリア、物件略称、撮影現場、詳細をすべて入力してからカメラを起動してください。');
+                return;
+            }
+
             savePhotographer(document.getElementById('photographer').value); 
             saveCurrentInputs(); 
             isEditMode = false; 
@@ -733,7 +747,7 @@
 // 描画確定・ダウンロード保存処理
         commitMenuBtn.addEventListener('click', function() {
             if (!currentOriginalImageSrc) {
-                alert('写真が読み込まれていません。先にカメラ起動または写真編集を行ってください。');
+                alert('写真が読み込まれていません。先にカメラ起動または写真読込をしてください。');
                 return;
             }
             
