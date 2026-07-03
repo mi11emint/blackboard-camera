@@ -549,14 +549,11 @@
         function generateFinalCanvasSilently() {
             const img = new Image();
             img.onload = function() {
+                // 写真編集モードでもカメラでも、常に元の写真の幅を100%そのまま使います
                 let originalPhotoWidth = img.width;
                 let srcX = 0;
 
-                if (isEditMode) {
-                    originalPhotoWidth = img.width / 1.35;
-                    srcX = img.width - originalPhotoWidth;
-                }
-
+                // 黒板の横幅（元の写真の横幅に対する割合。35%に設定されています）
                 const boardWidth = originalPhotoWidth * 0.35;
                 
                 canvas.width = boardWidth + originalPhotoWidth;
