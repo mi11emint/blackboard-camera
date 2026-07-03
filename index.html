@@ -11,6 +11,17 @@
         input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
         textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
         
+        /* ★【新設】エリアと物件略称を同じサイズで横並びにするスタイル */
+        .form-row {
+            display: flex;
+            gap: 15px; /* 横並びの間隔 */
+            margin-bottom: 15px;
+        }
+        .form-row .form-group {
+            flex: 1; /* 50%ずつ均等に分ける */
+            margin-bottom: 0; /* 二重に余白がつかないようリセット */
+        }
+
         .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
         .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
         .checkbox-group label { margin-bottom: 0; cursor: pointer; font-size: 16px; }
@@ -19,7 +30,7 @@
         .history-btn { background-color: #e0e0e0; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .delete-history { color: red; font-weight: bold; margin-left: 5px; cursor: pointer; }
         
-        /* ★【大改造】4つのボタンを横一列に並べるスタイル */
+        /* 4つのボタンを横一列に並べるスタイル */
         .button-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr); /* 横に4等分 */
@@ -27,7 +38,7 @@
             margin-bottom: 15px;
         }
 
-        /* ★横一列に合わせて文字サイズと余白をちょうど良く調整 */
+        /* 横一列に合わせて文字サイズと余白をちょうど良く調整 */
         .grid-btn {
             width: 100%;
             aspect-ratio: 1 / 1; /* 正方形を維持 */
@@ -124,30 +135,31 @@
 </head>
 <body>
 
-    <h2>黒板カメラアプリ</h2>
-    
     <div class="form-group">
         <label for="photographer">撮影者名</label>
         <input type="text" id="photographer" placeholder="例：○○株式会社 山田" oninput="updateFastPreview()">
         <div id="photographerHistory" class="history-container"></div>
     </div>
 
-    <div class="form-group">
-        <label for="areaSelect">エリア</label>
-        <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
-            <option value="">-- エリアを選択 --</option>
-            <option value="市内">市内</option>
-            <option value="東大阪">東大阪</option> 
-        </select>
-    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="areaSelect">エリア</label>
+            <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
+                <option value="">-- エリアを選択 --</option>
+                <option value="市内">市内</option>
+                <option value="東大阪">東大阪</option> 
+            </select>
+        </div>
 
-    <div class="form-group">
-        <label for="propertySelect">物件略称</label>
-        <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
-            <option value="">-- 先にエリアを選択 --</option>
-        </select>
-        <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: 5px; display: none;" oninput="updateFastPreview()">
+        <div class="form-group">
+            <label for="propertySelect">物件略称</label>
+            <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
+                <option value="">-- 先にエリアを選択 --</option>
+            </select>
+        </div>
     </div>
+    
+    <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: -5px; margin-bottom: 15px; display: none;" oninput="updateFastPreview()">
 
     <div class="form-group">
         <label for="location">撮影現場</label>
@@ -155,7 +167,7 @@
     </div>
 
     <div class="form-group">
-        <label for="detail">詳細（自由に改行できます）</label>
+        <label for="detail">詳細</label>
         <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置" oninput="updateFastPreview()"></textarea>
     </div>
 
@@ -229,7 +241,7 @@
             propertyInput.value = '';
 
             if (!selectedArea) {
-                propertySelect.innerHTML = '<option value="">-- 先にエリアを選択してください --</option>';
+                propertySelect.innerHTML = '<option value="">-- 先にエリアを選択 --</option>';
                 propertySelect.disabled = true;
                 return;
             }
@@ -273,7 +285,7 @@
             }
             
             previewContainer.style.display = 'block';
-            statusText.innerText = "表示中（スクリーンショット等で保存してください）";
+            statusText.innerText = "撮影後も入力データを編集できます";
             
             generateFinalCanvasSilently();
         }
@@ -368,7 +380,7 @@
                 
                 document.getElementById('photographer').value = '';
                 document.getElementById('areaSelect').value = '';
-                document.getElementById('propertySelect').innerHTML = '<option value="">-- 先にエリアを選択してください --</option>';
+                document.getElementById('propertySelect').innerHTML = '<option value="">-- 先にエリアを選択 --</option>';
                 document.getElementById('propertySelect').disabled = true;
                 document.getElementById('property').value = '';
                 document.getElementById('property').style.display = 'none';
