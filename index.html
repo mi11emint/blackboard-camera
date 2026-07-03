@@ -188,8 +188,18 @@
 }
         
         }
+        ./* 現場ツールに馴染む、シンプルで引き締まった黒塗りデザイン */
         .status-badge {
-            background-color: #073073; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; margin-bottom: 8px;
+            background-color: #073073;
+            color: #ffffff;
+            padding: 5px 14px; 
+            border-radius: 4px;        /* カプセル型ではなく、少しだけ角が丸い四角形に */
+            font-size: 11px; 
+            font-weight: bold;
+            letter-spacing: 1.5px;     /* 文字の間隔を少し広げて、よりシャープな印象に */
+            display: inline-block; 
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         .preview-container { 
             width: 100%; 
@@ -235,10 +245,11 @@
         /* height: auto にして写真本来の大きさを100%表示します */
         .preview-photo { width: 100%; height: auto; display: block; }
         
-        /* 手書き用キャンバス（写真の上にピッタリ重ねる） */
+       /* 手書き用キャンバス（写真の上にピッタリ重ねる） */
         .drawing-canvas {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
             cursor: crosshair; touch-action: none; display: none;
+            pointer-events: none; /* ★ここを追加：通常時はタッチを通り抜けさせて長押し可能にします */
         }
         .drawing-canvas.active { display: block; }
         
@@ -336,6 +347,15 @@
     </div>
 
     <canvas id="canvas"></canvas>
+<div id="downloadOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; padding: 20px; box-sizing: border-box;">
+        <p style="color: white; margin-bottom: 15px; font-weight: bold; font-size: 16px; text-align: center; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;">
+           画像を長押しして保存
+        </p>
+        <img id="overlayImage" style="max-width: 100%; max-height: 75%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <button id="closeOverlayBtn" style="margin-top: 25px; padding: 12px 30px; border: none; border-radius: 50px; background-color: #ef4444; color: white; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            閉じる
+        </button>
+    </div>
 
     <script>
         const okButton = document.getElementById('okButton');
@@ -700,7 +720,7 @@
                 reader.onload = function(e) {
                     currentOriginalImageSrc = e.target.result;
                     previewPhoto.src = currentOriginalImageSrc; 
-                    setMode("none");
+                    setMode("none"); // ★ここが実行されることで初期状態のタッチ無効化が効きます
                     updateFastPreview(); 
                 };
                 reader.readAsDataURL(file);
@@ -717,24 +737,29 @@
                 return;
             }
             
-            // --- ★ここから追加★ ---
-            // 裏側で作った「手書き合成済み」の画像データを、画面のプレビュー写真にセットします
+            // 裏側で作った「手書き合成済み」の画像データを取得
             const combinedDataUrl = canvas.toDataURL("image/jpeg", 0.90);
-            previewPhoto.src = combinedDataUrl;
-            // ------------------------
+            
+            // 【変更箇所】オーバーレイ用の画像要素にセットして、画面に表示させる
+            const overlay = document.getElementById('downloadOverlay');
+            document.getElementById('overlayImage').src = combinedDataUrl;
+            overlay.style.display = 'flex'; // オーバーレイを表示
 
+            // PCやAndroid用の自動ダウンロード処理（残しておくと便利です）
             const link = document.createElement('a');
             const now = new Date();
             const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
-            
-            link.href = combinedDataUrl; // ここも共通の変数にしておくと確実です
+            link.href = combinedDataUrl;
             link.download = fileName;
             link.click();
-            alert('データを確定し、黒板合成写真を保存しました！');
 
-            // 手書きモード（透明なキャンバスのブロック）をオフにします
-            // これにより、手書き線が見えたままiPhoneで長押し保存ができるようになります
+            // 手書きモード（透明なキャンバスのブロック）はオフに戻しておく
             setMode("none"); 
+        });
+
+        // 【新しく追加】オーバーレイの「閉じる」ボタンを押したときの処理
+        document.getElementById('closeOverlayBtn').addEventListener('click', function() {
+            document.getElementById('downloadOverlay').style.display = 'none';
         });
         
         // ==========================================
@@ -750,12 +775,15 @@
             if (currentMode === "draw") {
                 drawMenuBtn.classList.add('active');
                 drawingCanvas.classList.add('active');
+                drawingCanvas.style.pointerEvents = 'auto'; // ★手書き中はタッチを有効にする
                 statusBadge.innerText = "手書きモード中";
             } else if (currentMode === "erase") {
                 eraserMenuBtn.classList.add('active');
                 drawingCanvas.classList.add('active');
+                drawingCanvas.style.pointerEvents = 'auto'; // ★消しゴム中もタッチを有効にする
                 statusBadge.innerText = "消しゴムモード中";
             } else {
+                drawingCanvas.style.pointerEvents = 'none'; // ★通常時はタッチを無視させて長押し可能にする
                 statusBadge.innerText = "表示中";
             }
         }
