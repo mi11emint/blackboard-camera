@@ -3,203 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ</title>
+    <title>MURATETSU BLACKBOARD</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
-        textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
+        * { box-sizing: border-box; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif; }
         
-        /* ★【新設】エリアと物件略称を同じサイズで横並びにするスタイル */
-        .form-row {
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #b0c2de 0%, #cbd5e1 100%); 
+            min-height: 100vh;
             display: flex;
-            gap: 15px; /* 横並びの間隔 */
-            margin-bottom: 15px;
-        }
-        .form-row .form-group {
-            flex: 1; /* 50%ずつ均等に分ける */
-            margin-bottom: 0; /* 二重に余白がつかないようリセット */
-        }
-
-        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
-        .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
-        .checkbox-group label { margin-bottom: 0; cursor: pointer; font-size: 16px; }
-
-        .history-container { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
-        .history-btn { background-color: #e0e0e0; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
-        .delete-history { color: red; font-weight: bold; margin-left: 5px; cursor: pointer; }
-        
-        /* 4つのボタンを横一列に並べるスタイル */
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 横に4等分 */
-            gap: 8px; /* ボタン同士の間隔を少し詰めて調整 */
-            margin-bottom: 15px;
-        }
-
-        /* 横一列に合わせて文字サイズと余白をちょうど良く調整 */
-        .grid-btn {
-            width: 100%;
-            aspect-ratio: 1 / 1; /* 正方形を維持 */
-            color: white;
-            border: none;
-            border-radius: 12px; /* 少し丸みを持たせる */
-            font-size: 15px; /* 横一列で文字がはみ出さない絶妙な大きさに調整 */
-            font-weight: bold; /* 太字 */
-            line-height: 1.2; /* 行間 */
-            cursor: pointer;
-            box-shadow: 0 3px 5px rgba(0,0,0,0.15); /* ほどよい立体感 */
-            display: flex;
-            align-items: center;
             justify-content: center;
-            text-align: center;
-            padding: 4px; /* 横並び用に内側の余白を少し狭く */
-            box-sizing: border-box;
         }
-        
-        /* ボタンごとの色分け */
-        #okButton { background-color: #007bff; }
-        #editButton { background-color: #17a2b8; }
-        #restoreButton { background-color: #ffc107; color: #333; }
-        #clearButton { background-color: #6c757d; }
-        
-        #resultContainer { margin-top: 20px; text-align: center; }
 
-        /* 超軽量のための「仮表示用」黒板スタイル（CSSで瞬時に描画） */
-        .preview-container { 
-            display: none; 
-            width: 100%; 
-            background-color: #004d25; 
-            color: white; 
-            border-radius: 4px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .preview-layout {
-            display: flex;
+        /* アプリ全体のコンテナ（デザイン画像に基づく縦型レイアウト） */
+        .app-container {
             width: 100%;
-            aspect-ratio: 1.35 / 1; 
-        }
-        .preview-board {
-            width: 26%; 
-            padding: 3% 2%;
-            text-align: left;
-            font-size: 3vw; 
-            font-weight: bold;
-            line-height: 1.4;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            box-sizing: border-box;
-            word-break: break-all;
-            white-space: pre-wrap; 
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 25px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
             position: relative;
         }
-        .preview-board-item {
-            margin-bottom: 6%;
-        }
-        .preview-board-title {
-            color: #fff;
-            opacity: 0.9;
-        }
-        .preview-board-text {
-            color: #fff;
-            padding-left: 2px;
-        }
-        .preview-board-date {
+
+        /* 右側の縦型タイトルロゴ背景風 */
+        .side-logo {
             position: absolute;
-            bottom: 3%;
-            right: 5%;
-            font-size: 2.2vw;
-            opacity: 0.9;
+            right: 15px;
+            top: 10px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 24px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 4px;
+            pointer-events: none;
+            text-transform: uppercase;
         }
-        .preview-photo-area {
-            width: 74%;
-            background-color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+
+        /* フォーム要素共通 */
+        .form-group { margin-bottom: 16px; width: 85%; }
+        .form-row { display: flex; gap: 5px; width: 85%; margin-bottom: 16px; }
+        .form-row .form-group { width: 100%; margin-bottom: 0; }
+
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #1a252f; 
+            font-size: 16px;
         }
-        .preview-photo {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; 
+
+        input[type="text"], select, textarea { 
+            width: 100%; 
+            padding: 12px 16px; 
+            font-size: 15px; 
+            border: none; 
+            border-radius: 50px; /* 画像のような丸みのある入力欄 */
+            background-color: white; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            outline: none;
+            color: #333;
         }
         
-        canvas { display: none; }
+        textarea { 
+            border-radius: 18px; /* テキストエリア用 */
+            resize: vertical; 
+        }
+
+        /* 日付表示切り替えスイッチ */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+        .switch-label { font-size: 18px; font-weight: bold; color: #1a252f; }
+        .toggle-switch { position: relative; display: inline-block; width: 54px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .3s; border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: #60a5fa; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        /* ボトムエリア（左側アクション、右側メニュー） */
+        .bottom-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 15px;
+        }
+
+        /* 左側の四角形ボタングリッド */
+        .action-grid {
+            display: flex;
+            gap: 10px;
+            
+            position: relative;
+    top: -65px; /* ← 右側メニューで設定した数値と合わせると綺麗に揃います */
+    z-index: 10;
+            
+        }
+        .square-btn {
+            width: 68px;
+            height: 68px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .square-btn:active { transform: scale(0.96); }
+        #clearButton { background-color: #bae6fd; color: #0369a1; }
+        #restoreButton { background-color: #7dd3fc; color: #0369a1; }
+        #okButton { background-color: #38bdf8; color: white; font-size: 14px; }
+        .camera-icon { font-size: 16px; margin-top: 1px; }
+
+        /* 右側の縦型文字メニュー */
+        .menu-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    width: 40%;
+    
+    /* ここから追加 */
+    position: relative;
+    top: -65px; /* ← この数値を大きくする（例: -70px）とさらに上に上がります */
+    z-index: 10; /* 他の要素に隠れないように前面に出す */
+          
+          left: 12px;
+        }
+        
+        .menu-item {
+            font-size: 15px;
+            font-weight: bold;
+            color: #073073;
+            padding: 6px 0;
+            cursor: pointer;
+            width: 100%;
+            text-align: right;
+            border-bottom: 1.5px solid #073073;
+            transition: color 0.2s, opacity 0.2s;
+            user-select: none;
+        }
+        .menu-item:active { opacity: 0.6; }
+        /* モードがアクティブなときの状態 */
+        .menu-item.active {
+            color: #ef4444;
+            border-bottom-color: #ef4444;
+        }
+
+        /* 撮影者名の履歴 */
+        .history-container { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .history-btn { background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.1); padding: 3px 8px; border-radius: 20px; font-size: 11px; cursor: pointer; }
+        .delete-history { color: #ef4444; margin-left: 4px; }
+
+        /* プレビュー＆黒板表示用領域 */
+        #resultContainer { margin-top: 25px; display: none; width: 100%; 
+          
+          position: relative;
+    top: -65px;           /* ← ボタンやメニューの引き上げ量（-65pxなど）と合わせます */
+    margin-bottom: -65px; /* ← 引き上げた分、下の余白を削ってコンテナを縮めます */
+}
+        
+        }
+        .status-badge {
+            background-color: #073073; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; margin-bottom: 8px;
+        }
+        .preview-container { 
+            width: 100%; 
+            background-color: #004d25; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .preview-layout { display: flex; width: 100%; aspect-ratio: 1.35 / 1; }
+        
+        .preview-board {
+            width: 26%; padding: 3% 2%; text-align: left; font-size: 2.8vw; font-weight: bold; color: white;
+            line-height: 1.4; display: flex; flex-direction: column; justify-content: flex-start;
+            box-sizing: border-box; word-break: break-all; white-space: pre-wrap; position: relative; user-select: none;
+        }
+        .preview-board-item { 
+    margin-bottom: 6%; 
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4); /* うっすらとした白線を追加 */
+    padding-bottom: 4%;                                 /* 線と文字の間隔を調整 */
+}
+        .preview-board-title { color: #fff; opacity: 0.85; }
+        .preview-board-text { color: #fff; padding-left: 2px; }
+        .preview-board-date { position: absolute; bottom: 3%; right: 5%; font-size: 2vw; opacity: 0.85; }
+        
+        .preview-photo-area { width: 74%; background-color: #333; position: relative; overflow: hidden; }
+        .preview-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        /* 手書き用キャンバス（写真の上にピッタリ重ねる） */
+        .drawing-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            cursor: crosshair; touch-action: none; display: none;
+        }
+        .drawing-canvas.active { display: block; }
+        
+        canvas#canvas { display: none; }
         .hidden-input { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="form-group">
-        <label for="photographer">撮影者名</label>
-        <input type="text" id="photographer" placeholder="例：○○株式会社 山田" oninput="updateFastPreview()">
-        <div id="photographerHistory" class="history-container"></div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label for="areaSelect">エリア</label>
-            <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
-                <option value="">-- エリアを選択 --</option>
-                <option value="市内">市内</option>
-                <option value="東大阪">東大阪</option> 
-            </select>
-        </div>
+    <div class="app-container">
+        <div class="side-logo">MURATETSU BLACKBOARD</div>
 
         <div class="form-group">
-            <label for="propertySelect">物件略称</label>
-            <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
-                <option value="">-- 先にエリアを選択 --</option>
-            </select>
+            <label for="photographer">撮影者</label>
+            <input type="text" id="photographer" placeholder="例：山田" oninput="updateFastPreview()">
+            <div id="photographerHistory" class="history-container"></div>
         </div>
-    </div>
-    
-    <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: -5px; margin-bottom: 15px; display: none;" oninput="updateFastPreview()">
 
-    <div class="form-group">
-        <label for="location">撮影現場</label>
-        <input type="text" id="location" placeholder="例：2階 リビング" oninput="updateFastPreview()">
-    </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="areaSelect">エリア</label>
+                <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
+                    <option value="">選択なし</option>
+                    <option value="市内">市内</option>
+                    <option value="東大阪">東大阪</option> 
+                </select>
+            </div>
 
-    <div class="form-group">
-        <label for="detail">詳細</label>
-        <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置" oninput="updateFastPreview()"></textarea>
-    </div>
-
-    <div class="checkbox-group">
-        <input type="checkbox" id="showDateCheck" checked onchange="updateFastPreview()">
-        <label for="showDateCheck">日時表示</label>
-    </div>
-
-    <div class="button-grid">
-        <button id="okButton" class="grid-btn">ＯＫ<br>📷</button>
-        <button id="editButton" class="grid-btn">編集</button>
-        <button id="restoreButton" class="grid-btn">直前の<br>データ</button>
-        <button id="clearButton" class="grid-btn">入力<br>クリア</button>
-    </div>
-
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
-    <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
-
-    <div id="resultContainer">
-        <p id="statusText"></p>
+            <div class="form-group">
+                <label for="propertySelect">物件略称</label>
+                <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
+                    <option value="">物件名</option>
+                </select>
+            </div>
+        </div>
         
-        <div id="previewContainer" class="preview-container">
-            <div class="preview-layout">
-                <div class="preview-board">
-                    <div class="preview-board-item"><span class="preview-board-title">撮影者：</span><br><span id="viewPhotographer" class="preview-board-text"></span></div>
-                    <div class="preview-board-item"><span class="preview-board-title">物件略称：</span><br><span id="viewProperty" class="preview-board-text"></span></div>
-                    <div class="preview-board-item"><span class="preview-board-title">撮影現場：</span><br><span id="viewLocation" class="preview-board-text"></span></div>
-                    <div class="preview-board-item"><span class="preview-board-title">詳細：</span><br><span id="viewDetail" class="preview-board-text"></span></div>
-                    <div id="viewDate" class="preview-board-date"></div>
-                </div>
-                <div class="preview-photo-area">
-                    <img id="previewPhoto" class="preview-photo" alt="撮影された写真">
+        <div class="form-group" id="propertyInputWrapper" style="display: none; margin-top: -8px;">
+            <input type="text" id="property" placeholder="物件略称を手入力" oninput="updateFastPreview()">
+        </div>
+
+        <div class="form-group">
+            <label for="location">撮影現場</label>
+            <input type="text" id="location" placeholder="例：2階 リビング" oninput="updateFastPreview()">
+        </div>
+
+        <div class="form-group">
+            <label for="detail">詳細</label>
+            <textarea id="detail" rows="3" placeholder="例：状況など" oninput="updateFastPreview()"></textarea>
+        </div>
+
+        <div class="switch-container">
+            <span class="switch-label">日付表示</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showDateCheck" checked onchange="updateFastPreview()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="bottom-area">
+            <div class="action-grid">
+                <button id="clearButton" class="square-btn">クリア</button>
+                <button id="restoreButton" class="square-btn">直前の<br>データ</button>
+                <button id="okButton" class="square-btn">カメラ<span class="camera-icon">📷</span></button>
+            </div>
+
+            <div class="menu-list">
+                <div id="editMenuBtn" class="menu-item">写 真 編 集</div>
+                <div id="drawMenuBtn" class="menu-item">手 書 き</div>
+                <div id="eraserMenuBtn" class="menu-item">消 し ゴ ム</div>
+                <div id="commitMenuBtn" class="menu-item" style="font-weight: 900;">描 画 確 定</div>
+            </div>
+        </div>
+
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
+        <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
+
+        <div id="resultContainer">
+            <div id="statusBadge" class="status-badge">表示中</div>
+            <div id="previewContainer" class="preview-container">
+                <div class="preview-layout">
+                    <div class="preview-board">
+                        <div class="preview-board-item"><span class="preview-board-title">撮影者：</span><br><span id="viewPhotographer" class="preview-board-text"></span></div>
+                        <div class="preview-board-item"><span class="preview-board-title">物件略称：</span><br><span id="viewProperty" class="preview-board-text"></span></div>
+                        <div class="preview-board-item"><span class="preview-board-title">撮影現場：</span><br><span id="viewLocation" class="preview-board-text"></span></div>
+                        <div class="preview-board-item"><span class="preview-board-title">詳細：</span><br><span id="viewDetail" class="preview-board-text"></span></div>
+                        <div id="viewDate" class="preview-board-date"></div>
+                    </div>
+                    <div class="preview-photo-area" id="photoArea">
+                        <img id="previewPhoto" class="preview-photo" alt="対象写真">
+                        <canvas id="drawingCanvas" class="drawing-canvas"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -209,22 +321,34 @@
 
     <script>
         const okButton = document.getElementById('okButton');
-        const editButton = document.getElementById('editButton');
-        const restoreButton = document.getElementById('restoreButton');
         const clearButton = document.getElementById('clearButton');
+        const restoreButton = document.getElementById('restoreButton');
+        
+        const editMenuBtn = document.getElementById('editMenuBtn');
+        const drawMenuBtn = document.getElementById('drawMenuBtn');
+        const eraserMenuBtn = document.getElementById('eraserMenuBtn');
+        const commitMenuBtn = document.getElementById('commitMenuBtn');
+
         const cameraInput = document.getElementById('cameraInput');
         const editFileInput = document.getElementById('editFileInput');
-        const previewContainer = document.getElementById('previewContainer');
+        
+        const resultContainer = document.getElementById('resultContainer');
         const previewPhoto = document.getElementById('previewPhoto');
-        const statusText = document.getElementById('statusText');
+        const statusBadge = document.getElementById('statusBadge');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const dCtx = drawingCanvas.getContext('2d');
 
         let currentOriginalImageSrc = null;
         let isEditMode = false; 
         let currentGeneratedDateText = ""; 
 
-        // --- 物件データの定義 ---
+        let strokes = [];
+        let isDrawing = false;
+        let currentMode = "none"; // "none", "draw", "erase"
+
         const propertyData = {
             "市内": ["北堀江", "難波", "京町堀", "靱本町", "本町橋", "上本町", "BG鶴見", "SV東淀川"],
             "東大阪": ["高井田", "E長堂", "BS華", "A小阪", "P小阪", "Aカジュアル", "GS八戸ノ里", "八戸ノ里"]
@@ -233,21 +357,22 @@
         function updatePropertyOptions() {
             const areaSelect = document.getElementById('areaSelect');
             const propertySelect = document.getElementById('propertySelect');
+            const wrapper = document.getElementById('propertyInputWrapper');
             const propertyInput = document.getElementById('property');
             const selectedArea = areaSelect.value;
             
             propertySelect.innerHTML = '';
-            propertyInput.style.display = 'none';
+            wrapper.style.display = 'none';
             propertyInput.value = '';
 
             if (!selectedArea) {
-                propertySelect.innerHTML = '<option value="">-- 先にエリアを選択 --</option>';
+                propertySelect.innerHTML = '<option value="">エリアを先選択</option>';
                 propertySelect.disabled = true;
                 return;
             }
 
             propertySelect.disabled = false;
-            let optionsHtml = '<option value="">-- 物件を選択してください --</option>';
+            let optionsHtml = '<option value="">物件を選択</option>';
             propertyData[selectedArea].forEach(name => {
                 optionsHtml += `<option value="${name}">${name}</option>`;
             });
@@ -257,17 +382,17 @@
 
         function togglePropertyInput() {
             const select = document.getElementById('propertySelect');
+            const wrapper = document.getElementById('propertyInputWrapper');
             const input = document.getElementById('property');
             if (select.value === "__CUSTOM__") {
-                input.style.display = "block";
+                wrapper.style.display = "block";
                 input.value = "";
             } else {
-                input.style.display = "none";
+                wrapper.style.display = "none";
                 input.value = select.value; 
             }
         }
 
-        // 高速・軽量なHTMLベースの仮表示アップデート処理
         function updateFastPreview() {
             if (!currentOriginalImageSrc) return;
 
@@ -284,10 +409,13 @@
                 dateDiv.style.display = 'none';
             }
             
-            previewContainer.style.display = 'block';
-            statusText.innerText = "撮影後も入力データを編集できます";
+            resultContainer.style.display = 'block';
             
-            generateFinalCanvasSilently();
+            setTimeout(() => {
+                resizeDrawingCanvas();
+                redrawOnScreenCanvas();
+                generateFinalCanvasSilently();
+            }, 50);
         }
 
         // --- 撮影者名の履歴管理処理 ---
@@ -326,7 +454,6 @@
 
         updateHistoryUI();
 
-        // --- 入力内容を保存・復元する処理 ---
         function saveCurrentInputs() {
             const inputs = {
                 photographer: document.getElementById('photographer').value,
@@ -356,10 +483,10 @@
             if (inputs.propertySelect) {
                 document.getElementById('propertySelect').value = inputs.propertySelect;
                 if (inputs.propertySelect === '__CUSTOM__') {
-                    document.getElementById('property').style.display = 'block';
+                    document.getElementById('propertyInputWrapper').style.display = 'block';
                     document.getElementById('property').value = inputs.propertyRaw || '';
                 } else {
-                    document.getElementById('property').style.display = 'none';
+                    document.getElementById('propertyInputWrapper').style.display = 'none';
                     document.getElementById('property').value = inputs.propertySelect;
                 }
             }
@@ -373,26 +500,25 @@
             updateFastPreview(); 
         });
 
-        // --- オールクリアボタンの処理 ---
         clearButton.addEventListener('click', function() {
             if (confirm('入力された内容をすべて消去しますか？')) {
                 saveCurrentInputs();
                 
                 document.getElementById('photographer').value = '';
                 document.getElementById('areaSelect').value = '';
-                document.getElementById('propertySelect').innerHTML = '<option value="">-- 先にエリアを選択 --</option>';
+                document.getElementById('propertySelect').innerHTML = '<option value="">エリアを先選択</option>';
                 document.getElementById('propertySelect').disabled = true;
                 document.getElementById('property').value = '';
-                document.getElementById('property').style.display = 'none';
+                document.getElementById('propertyInputWrapper').style.display = 'none';
                 document.getElementById('location').value = '';
                 document.getElementById('detail').value = '';
                 document.getElementById('showDateCheck').checked = true;
+                strokes = []; 
                 
                 updateFastPreview(); 
             }
         });
 
-        // 長文を折り返して描画する関数
         function drawTextLines(ctx, text, x, startY, maxWidth, lineSpacing) {
             let currentY = startY;
             let paragraphs = text.split('\n');
@@ -419,7 +545,7 @@
             return currentY;
         }
 
-        // 入力変化時に裏側で静かに高解像度合成を行う関数
+        // 裏側の高解像度書き出しキャンバス処理
         function generateFinalCanvasSilently() {
             const img = new Image();
             img.onload = function() {
@@ -436,11 +562,32 @@
                 canvas.width = boardWidth + originalPhotoWidth;
                 canvas.height = img.height;
 
+                // 黒板背景
                 ctx.fillStyle = "#004d25";
                 ctx.fillRect(0, 0, boardWidth, canvas.height);
 
+                // 写真描画
                 ctx.drawImage(img, srcX, 0, originalPhotoWidth, img.height, boardWidth, 0, originalPhotoWidth, img.height);
 
+                // 写真領域上への手書き線の合成
+                if (strokes.length > 0) {
+                    ctx.strokeStyle = "#ff0000"; 
+                    ctx.lineWidth = Math.max(4, originalPhotoWidth * 0.006); 
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+
+                    for (let stroke of strokes) {
+                        if (stroke.length < 2) continue;
+                        ctx.beginPath();
+                        ctx.moveTo(boardWidth + stroke[0].x * originalPhotoWidth, stroke[0].y * img.height);
+                        for (let i = 1; i < stroke.length; i++) {
+                            ctx.lineTo(boardWidth + stroke[i].x * originalPhotoWidth, stroke[i].y * img.height);
+                        }
+                        ctx.stroke();
+                    }
+                }
+
+                // 黒板文字テキスト描画
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
@@ -451,22 +598,48 @@
                 const textX = boardWidth * 0.05;
                 let currentY = canvas.height * 0.05;
 
+                // --- 線の太さと色の設定 ---
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.6)"; 
+                ctx.lineWidth = Math.max(1.5, boardWidth * 0.005); // 黒板のサイズに比例した太さ
+
                 ctx.fillText("撮影者：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('photographer').value, textX, currentY, maxTextWidth, lineSpacing);
+                
+                // 1本目の線（撮影者の下）
+                ctx.beginPath();
+                ctx.moveTo(textX, currentY + 5);
+                ctx.lineTo(boardWidth - textX, currentY + 5);
+                ctx.stroke();
+                
                 currentY += itemSpacing;
 
                 ctx.fillText("物件略称：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('property').value, textX, currentY, maxTextWidth, lineSpacing);
+                
+                // 2本目の線（物件略称の下）
+                ctx.beginPath();
+                ctx.moveTo(textX, currentY + 5);
+                ctx.lineTo(boardWidth - textX, currentY + 5);
+                ctx.stroke();
+                
                 currentY += itemSpacing;
 
                 ctx.fillText("撮影現場：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('location').value, textX, currentY, maxTextWidth, lineSpacing);
+                
+                // 3本目の線（撮影現場の下）
+                ctx.beginPath();
+                ctx.moveTo(textX, currentY + 5);
+                ctx.lineTo(boardWidth - textX, currentY + 5);
+                ctx.stroke();
+                
                 currentY += itemSpacing;
 
                 ctx.fillText("詳細：", textX, currentY);
+                
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('detail').value, textX, currentY, maxTextWidth, lineSpacing);
 
@@ -486,21 +659,25 @@
                              String(now.getMinutes()).padStart(2, '0');
         }
 
+        // カメラ起動
         okButton.addEventListener('click', function() {
             savePhotographer(document.getElementById('photographer').value); 
             saveCurrentInputs(); 
             isEditMode = false; 
+            strokes = []; 
             cameraInput.click();
         });
 
-        editButton.addEventListener('click', function() {
+        // 写真編集メニューボタンクリック時
+        editMenuBtn.addEventListener('click', function() {
             savePhotographer(document.getElementById('photographer').value); 
             saveCurrentInputs(); 
             isEditMode = true; 
+            strokes = []; 
             editFileInput.click();
         });
 
-        cameraInput.addEventListener('change', function(event) {
+        function handleFileSelection(event) {
             const file = event.target.files[0];
             if (file) {
                 setNewGenerationDate(); 
@@ -508,26 +685,177 @@
                 reader.onload = function(e) {
                     currentOriginalImageSrc = e.target.result;
                     previewPhoto.src = currentOriginalImageSrc; 
+                    setMode("none");
                     updateFastPreview(); 
                 };
                 reader.readAsDataURL(file);
+            }
+        }
+
+        cameraInput.addEventListener('change', handleFileSelection);
+        editFileInput.addEventListener('change', handleFileSelection);
+
+        // 描画確定・ダウンロード保存処理
+        commitMenuBtn.addEventListener('click', function() {
+            if (!currentOriginalImageSrc) {
+                alert('写真が読み込まれていません。先にカメラ起動または写真編集を行ってください。');
+                return;
+            }
+            const link = document.createElement('a');
+            const now = new Date();
+            const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
+            
+            link.href = canvas.toDataURL("image/jpeg", 0.90);
+            link.download = fileName;
+            link.click();
+            alert('データを確定し、黒板合成写真を保存しました！');
+        });
+
+
+        // ==========================================
+        // 手書き＆消しゴム モード制御
+        // ==========================================
+
+        function setMode(mode) {
+            currentMode = mode;
+            drawMenuBtn.classList.remove('active');
+            eraserMenuBtn.classList.remove('active');
+            drawingCanvas.classList.remove('active');
+
+            if (currentMode === "draw") {
+                drawMenuBtn.classList.add('active');
+                drawingCanvas.classList.add('active');
+                statusBadge.innerText = "手書きモード中";
+            } else if (currentMode === "erase") {
+                eraserMenuBtn.classList.add('active');
+                drawingCanvas.classList.add('active');
+                statusBadge.innerText = "消しゴムモード中";
+            } else {
+                statusBadge.innerText = "表示中";
+            }
+        }
+
+        drawMenuBtn.addEventListener('click', function() {
+            if (currentMode === "draw") setMode("none");
+            else setMode("draw");
+        });
+
+        eraserMenuBtn.addEventListener('click', function() {
+            if (currentMode === "erase") setMode("none");
+            else setMode("erase");
+        });
+
+        function resizeDrawingCanvas() {
+            drawingCanvas.width = previewPhoto.clientWidth;
+            drawingCanvas.height = previewPhoto.clientHeight;
+        }
+
+        function redrawOnScreenCanvas() {
+            dCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            if (strokes.length === 0) return;
+
+            dCtx.strokeStyle = "#ff0000"; 
+            dCtx.lineWidth = 3;            
+            dCtx.lineCap = "round";
+            dCtx.lineJoin = "round";
+
+            for (let stroke of strokes) {
+                if (stroke.length < 2) continue;
+                dCtx.beginPath();
+                dCtx.moveTo(stroke[0].x * drawingCanvas.width, stroke[0].y * drawingCanvas.height);
+                for (let i = 1; i < stroke.length; i++) {
+                    dCtx.lineTo(stroke[i].x * drawingCanvas.width, stroke[i].y * drawingCanvas.height);
+                }
+                dCtx.stroke();
+            }
+        }
+
+        function getPos(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            return {
+                x: (clientX - rect.left) / drawingCanvas.width,
+                y: (clientY - rect.top) / drawingCanvas.height
+            };
+        }
+
+        function eraseAtPosition(pos) {
+            const eraseRadius = 0.04; 
+            let hit = false;
+
+            for (let i = strokes.length - 1; i >= 0; i--) {
+                let stroke = strokes[i];
+                for (let pt of stroke) {
+                    let dx = pt.x - pos.x;
+                    let dy = pt.y - pos.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist < eraseRadius) {
+                        strokes.splice(i, 1); 
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+            if (hit) {
+                redrawOnScreenCanvas();
+            }
+        }
+
+        function startDraw(e) {
+            if (currentMode === "none") return;
+            isDrawing = true;
+            const pos = getPos(e);
+
+            if (currentMode === "draw") {
+                strokes.push([pos]);
+            } else if (currentMode === "erase") {
+                eraseAtPosition(pos);
+            }
+            e.preventDefault();
+        }
+
+        function moveDraw(e) {
+            if (!isDrawing || currentMode === "none") return;
+            const pos = getPos(e);
+
+            if (currentMode === "draw") {
+                strokes[strokes.length - 1].push(pos);
+                redrawOnScreenCanvas();
+            } else if (currentMode === "erase") {
+                eraseAtPosition(pos);
+            }
+            e.preventDefault();
+        }
+
+        function endDraw() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            generateFinalCanvasSilently(); 
+        }
+
+        window.addEventListener('resize', () => {
+            if (currentOriginalImageSrc) {
+                resizeDrawingCanvas();
+                redrawOnScreenCanvas();
             }
         });
 
-        editFileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                setNewGenerationDate(); 
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentOriginalImageSrc = e.target.result;
-                    previewPhoto.src = currentOriginalImageSrc; 
-                    updateFastPreview(); 
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        drawingCanvas.addEventListener('mousedown', startDraw);
+        drawingCanvas.addEventListener('mousemove', moveDraw);
+        window.addEventListener('mouseup', endDraw);
+
+        drawingCanvas.addEventListener('touchstart', startDraw, { passive: false });
+        drawingCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+        window.addEventListener('touchend', endDraw);
+
     </script>
-
 </body>
 </html>
