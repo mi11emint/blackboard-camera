@@ -19,7 +19,35 @@
         .history-btn { background-color: #e0e0e0; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .delete-history { color: red; font-weight: bold; margin-left: 5px; cursor: pointer; }
         
-        button { width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-bottom: 10px; font-weight: bold; }
+        /* ★【大改造】4つのボタンを横一列に並べるスタイル */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 横に4等分 */
+            gap: 8px; /* ボタン同士の間隔を少し詰めて調整 */
+            margin-bottom: 15px;
+        }
+
+        /* ★横一列に合わせて文字サイズと余白をちょうど良く調整 */
+        .grid-btn {
+            width: 100%;
+            aspect-ratio: 1 / 1; /* 正方形を維持 */
+            color: white;
+            border: none;
+            border-radius: 12px; /* 少し丸みを持たせる */
+            font-size: 15px; /* 横一列で文字がはみ出さない絶妙な大きさに調整 */
+            font-weight: bold; /* 太字 */
+            line-height: 1.2; /* 行間 */
+            cursor: pointer;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.15); /* ほどよい立体感 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4px; /* 横並び用に内側の余白を少し狭く */
+            box-sizing: border-box;
+        }
+        
+        /* ボタンごとの色分け */
         #okButton { background-color: #007bff; }
         #editButton { background-color: #17a2b8; }
         #restoreButton { background-color: #ffc107; color: #333; }
@@ -105,18 +133,18 @@
     </div>
 
     <div class="form-group">
-        <label for="areaSelect">エリア選択</label>
+        <label for="areaSelect">エリア</label>
         <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
-            <option value="">-- エリアを選択してください --</option>
+            <option value="">-- エリアを選択 --</option>
             <option value="市内">市内</option>
             <option value="東大阪">東大阪</option> 
         </select>
     </div>
 
     <div class="form-group">
-        <label for="propertySelect">物件略称（リストから選択）</label>
+        <label for="propertySelect">物件略称</label>
         <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
-            <option value="">-- 先にエリアを選択してください --</option>
+            <option value="">-- 先にエリアを選択 --</option>
         </select>
         <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: 5px; display: none;" oninput="updateFastPreview()">
     </div>
@@ -133,13 +161,15 @@
 
     <div class="checkbox-group">
         <input type="checkbox" id="showDateCheck" checked onchange="updateFastPreview()">
-        <label for="showDateCheck">黒板に撮影日時を入れる</label>
+        <label for="showDateCheck">日時表示</label>
     </div>
 
-    <button id="okButton">OK（新規カメラ撮影）</button>
-    <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
-    <button id="restoreButton">直前に入力した内容を呼び出す</button>
-    <button id="clearButton">入力欄をすべてクリア</button>
+    <div class="button-grid">
+        <button id="okButton" class="grid-btn">ＯＫ<br>📷</button>
+        <button id="editButton" class="grid-btn">編集</button>
+        <button id="restoreButton" class="grid-btn">直前の<br>データ</button>
+        <button id="clearButton" class="grid-btn">入力<br>クリア</button>
+    </div>
 
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
     <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
@@ -243,9 +273,8 @@
             }
             
             previewContainer.style.display = 'block';
-            statusText.innerText = "入力欄を編集すると写真に反映できます";
+            statusText.innerText = "表示中（スクリーンショット等で保存してください）";
             
-            // 入力中に裏側でも常に本番合成を静かに走らせておき、Canvas側も最新に同期させます
             generateFinalCanvasSilently();
         }
 
