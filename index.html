@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（日付切替・iPhone保存強化版）</title>
+    <title>黒板カメラアプリ</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
@@ -11,7 +11,6 @@
         input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
         textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
         
-        /* 日付スイッチ用のスタイル */
         .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
         .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
         .checkbox-group label { margin-bottom: 0; cursor: pointer; font-size: 16px; }
@@ -25,17 +24,71 @@
         #editButton { background-color: #17a2b8; }
         #restoreButton { background-color: #ffc107; color: #333; }
         #clearButton { background-color: #6c757d; }
-        #downloadButton { background-color: #28a745; display: none; }
-        #shareButton { background-color: #ff9800; display: none; }
         
         #resultContainer { margin-top: 20px; text-align: center; }
-        
-        /* iPhoneで長押ししやすくするための画像コンテナ設定 */
-        .image-wrapper { position: relative; display: inline-block; max-width: 100%; margin-top: 10px; }
-        #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); -webkit-touch-callout: default; } /* iPhoneの長押しメニューを許可 */
-        
-        /* iPhone用：画像の上に被せる「長押しガイド」表示 */
-        #longPressGuide { display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; pointer-events: none; white-space: nowrap; }
+
+        /* 超軽量のための「仮表示用」黒板スタイル（CSSで瞬時に描画） */
+        .preview-container { 
+            display: none; 
+            width: 100%; 
+            background-color: #004d25; 
+            color: white; 
+            border-radius: 4px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .preview-layout {
+            display: flex;
+            width: 100%;
+            aspect-ratio: 1.35 / 1; 
+        }
+        .preview-board {
+            width: 26%; 
+            padding: 3% 2%;
+            text-align: left;
+            font-size: 3vw; 
+            font-weight: bold;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            box-sizing: border-box;
+            word-break: break-all;
+            white-space: pre-wrap; 
+            position: relative;
+        }
+        .preview-board-item {
+            margin-bottom: 6%;
+        }
+        .preview-board-title {
+            color: #fff;
+            opacity: 0.9;
+        }
+        .preview-board-text {
+            color: #fff;
+            padding-left: 2px;
+        }
+        .preview-board-date {
+            position: absolute;
+            bottom: 3%;
+            right: 5%;
+            font-size: 2.2vw;
+            opacity: 0.9;
+        }
+        .preview-photo-area {
+            width: 74%;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .preview-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; 
+        }
         
         canvas { display: none; }
         .hidden-input { display: none !important; }
@@ -47,13 +100,13 @@
     
     <div class="form-group">
         <label for="photographer">撮影者名</label>
-        <input type="text" id="photographer" placeholder="例：○○株式会社 山田">
+        <input type="text" id="photographer" placeholder="例：○○株式会社 山田" oninput="updateFastPreview()">
         <div id="photographerHistory" class="history-container"></div>
     </div>
 
     <div class="form-group">
         <label for="areaSelect">エリア選択</label>
-        <select id="areaSelect" onchange="updatePropertyOptions()">
+        <select id="areaSelect" onchange="updatePropertyOptions(); updateFastPreview();">
             <option value="">-- エリアを選択してください --</option>
             <option value="市内">市内</option>
             <option value="東大阪">東大阪</option> 
@@ -62,24 +115,24 @@
 
     <div class="form-group">
         <label for="propertySelect">物件略称（リストから選択）</label>
-        <select id="propertySelect" onchange="togglePropertyInput()" disabled>
+        <select id="propertySelect" onchange="togglePropertyInput(); updateFastPreview();" disabled>
             <option value="">-- 先にエリアを選択してください --</option>
         </select>
-        <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: 5px; display: none;">
+        <input type="text" id="property" placeholder="物件略称を手入力" style="margin-top: 5px; display: none;" oninput="updateFastPreview()">
     </div>
 
     <div class="form-group">
         <label for="location">撮影現場</label>
-        <input type="text" id="location" placeholder="例：2階 リビング">
+        <input type="text" id="location" placeholder="例：2階 リビング" oninput="updateFastPreview()">
     </div>
 
     <div class="form-group">
         <label for="detail">詳細（自由に改行できます）</label>
-        <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置"></textarea>
+        <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置" oninput="updateFastPreview()"></textarea>
     </div>
 
     <div class="checkbox-group">
-        <input type="checkbox" id="showDateCheck" checked onchange="handleDateSwitchChange()">
+        <input type="checkbox" id="showDateCheck" checked onchange="updateFastPreview()">
         <label for="showDateCheck">黒板に撮影日時を入れる</label>
     </div>
 
@@ -87,17 +140,27 @@
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
     <button id="restoreButton">直前に入力した内容を呼び出す</button>
     <button id="clearButton">入力欄をすべてクリア</button>
-    <button id="downloadButton">この画像を端末に保存する</button>
-    <button id="shareButton">この画像をLINE WORKS等に送る</button>
 
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden-input">
     <input type="file" id="editFileInput" accept="image/*" class="hidden-input">
 
     <div id="resultContainer">
         <p id="statusText"></p>
-        <div class="image-wrapper">
-            <img id="finalImage" alt="完成写真">
-            <div id="longPressGuide">☝ 画像を長押しで写真に保存できます</div> </div>
+        
+        <div id="previewContainer" class="preview-container">
+            <div class="preview-layout">
+                <div class="preview-board">
+                    <div class="preview-board-item"><span class="preview-board-title">撮影者：</span><br><span id="viewPhotographer" class="preview-board-text"></span></div>
+                    <div class="preview-board-item"><span class="preview-board-title">物件略称：</span><br><span id="viewProperty" class="preview-board-text"></span></div>
+                    <div class="preview-board-item"><span class="preview-board-title">撮影現場：</span><br><span id="viewLocation" class="preview-board-text"></span></div>
+                    <div class="preview-board-item"><span class="preview-board-title">詳細：</span><br><span id="viewDetail" class="preview-board-text"></span></div>
+                    <div id="viewDate" class="preview-board-date"></div>
+                </div>
+                <div class="preview-photo-area">
+                    <img id="previewPhoto" class="preview-photo" alt="撮影された写真">
+                </div>
+            </div>
+        </div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -107,19 +170,17 @@
         const editButton = document.getElementById('editButton');
         const restoreButton = document.getElementById('restoreButton');
         const clearButton = document.getElementById('clearButton');
-        const downloadButton = document.getElementById('downloadButton');
-        const shareButton = document.getElementById('shareButton');
         const cameraInput = document.getElementById('cameraInput');
         const editFileInput = document.getElementById('editFileInput');
-        const finalImage = document.getElementById('finalImage');
-        const longPressGuide = document.getElementById('longPressGuide');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewPhoto = document.getElementById('previewPhoto');
         const statusText = document.getElementById('statusText');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
         let currentOriginalImageSrc = null;
         let isEditMode = false; 
-        let currentFileForShare = null; 
+        let currentGeneratedDateText = ""; 
 
         // --- 物件データの定義 ---
         const propertyData = {
@@ -164,11 +225,28 @@
             }
         }
 
-        // --- 日付スイッチが切り替わった時に、もし画像があれば再描画する処理 ---
-        function handleDateSwitchChange() {
-            if (currentOriginalImageSrc) {
-                drawBlackboard(currentOriginalImageSrc);
+        // 高速・軽量なHTMLベースの仮表示アップデート処理
+        function updateFastPreview() {
+            if (!currentOriginalImageSrc) return;
+
+            document.getElementById('viewPhotographer').innerText = document.getElementById('photographer').value;
+            document.getElementById('viewProperty').innerText = document.getElementById('property').value;
+            document.getElementById('viewLocation').innerText = document.getElementById('location').value;
+            document.getElementById('viewDetail').innerText = document.getElementById('detail').value;
+
+            const dateDiv = document.getElementById('viewDate');
+            if (document.getElementById('showDateCheck').checked && currentGeneratedDateText) {
+                dateDiv.innerText = currentGeneratedDateText;
+                dateDiv.style.display = 'block';
+            } else {
+                dateDiv.style.display = 'none';
             }
+            
+            previewContainer.style.display = 'block';
+            statusText.innerText = "入力欄を編集すると写真に反映できます";
+            
+            // 入力中に裏側でも常に本番合成を静かに走らせておき、Canvas側も最新に同期させます
+            generateFinalCanvasSilently();
         }
 
         // --- 撮影者名の履歴管理処理 ---
@@ -183,6 +261,7 @@
                 btn.innerHTML = `${name} <span class="delete-history" onclick="deleteHistory(${index}, event)">❌</span>`;
                 btn.addEventListener('click', function() {
                     document.getElementById('photographer').value = name;
+                    updateFastPreview(); 
                 });
                 container.appendChild(btn);
             });
@@ -228,7 +307,6 @@
             }
             
             const inputs = JSON.parse(savedData);
-            
             document.getElementById('photographer').value = inputs.photographer || '';
             document.getElementById('areaSelect').value = inputs.area || '';
             
@@ -250,6 +328,8 @@
             if (inputs.hasOwnProperty('showDate')) {
                 document.getElementById('showDateCheck').checked = inputs.showDate;
             }
+            
+            updateFastPreview(); 
         });
 
         // --- オールクリアボタンの処理 ---
@@ -265,7 +345,9 @@
                 document.getElementById('property').style.display = 'none';
                 document.getElementById('location').value = '';
                 document.getElementById('detail').value = '';
-                document.getElementById('showDateCheck').checked = true; // デフォルトに戻す
+                document.getElementById('showDateCheck').checked = true;
+                
+                updateFastPreview(); 
             }
         });
 
@@ -296,8 +378,8 @@
             return currentY;
         }
 
-        function drawBlackboard(imageSrc) {
-            statusText.innerText = "画像を生成中...";
+        // 入力変化時に裏側で静かに高解像度合成を行う関数
+        function generateFinalCanvasSilently() {
             const img = new Image();
             img.onload = function() {
                 let originalPhotoWidth = img.width;
@@ -313,119 +395,79 @@
                 canvas.width = boardWidth + originalPhotoWidth;
                 canvas.height = img.height;
 
-                // 1. 左側を黒板（深緑）
                 ctx.fillStyle = "#004d25";
                 ctx.fillRect(0, 0, boardWidth, canvas.height);
 
-                // 2. 右側に写真
                 ctx.drawImage(img, srcX, 0, originalPhotoWidth, img.height, boardWidth, 0, originalPhotoWidth, img.height);
 
-                // 3. 文字サイズ設定（大きめ 0.080）
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 4. 行間の設定（メリハリ比率）
                 const lineSpacing = canvas.height * 0.040;  
                 const itemSpacing = canvas.height * 0.040;  
                 const maxTextWidth = boardWidth * 0.90;
                 const textX = boardWidth * 0.05;
                 let currentY = canvas.height * 0.05;
 
-                // 撮影者名
                 ctx.fillText("撮影者：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('photographer').value, textX, currentY, maxTextWidth, lineSpacing);
                 currentY += itemSpacing;
 
-                // 物件略称
                 ctx.fillText("物件略称：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('property').value, textX, currentY, maxTextWidth, lineSpacing);
                 currentY += itemSpacing;
 
-                // 撮影現場
                 ctx.fillText("撮影現場：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('location').value, textX, currentY, maxTextWidth, lineSpacing);
                 currentY += itemSpacing;
 
-                // 詳細
                 ctx.fillText("詳細：", textX, currentY);
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('detail').value, textX, currentY, maxTextWidth, lineSpacing);
 
-                // ★ 日付スイッチがONの場合のみ日付を右下に配置
-                if (document.getElementById('showDateCheck').checked) {
-                    const now = new Date();
-                    const dateText = now.getFullYear() + '/' + 
-                                     String(now.getMonth() + 1).padStart(2, '0') + '/' + 
-                                     String(now.getDate()).padStart(2, '0') + ' ' + 
-                                     String(now.getHours()).padStart(2, '0') + ':' + 
-                                     String(now.getMinutes()).padStart(2, '0');
-                    ctx.fillText(dateText, boardWidth - ctx.measureText(dateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
+                if (document.getElementById('showDateCheck').checked && currentGeneratedDateText) {
+                    ctx.fillText(currentGeneratedDateText, boardWidth - ctx.measureText(currentGeneratedDateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
                 }
-
-                // 5. 画面に表示 & 共有用データ作成
-                canvas.toBlob(function(blob) {
-                    const now = new Date();
-                    const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
-                    
-                    currentFileForShare = new File([blob], fileName, { type: "image/jpeg" });
-                    
-                    finalImage.src = URL.createObjectURL(blob);
-                    finalImage.style.display = 'block';
-                    longPressGuide.style.display = 'block'; // ★iPhone用ガイドを表示
-                    downloadButton.style.display = 'block';
-                    
-                    if (navigator.canShare && navigator.canShare({ files: [currentFileForShare] })) {
-                        shareButton.style.display = 'block';
-                    }
-                    
-                    statusText.innerText = "画像の生成が完了しました！";
-                }, 'image/jpeg');
             };
-            img.src = imageSrc;
+            img.src = currentOriginalImageSrc;
         }
 
-        function checkInputs() {
-            const photographer = document.getElementById('photographer').value;
-            const property = document.getElementById('property').value;
-            const location = document.getElementById('location').value;
-            const detail = document.getElementById('detail').value;
-
-            if (!photographer || !property || !location || !detail) {
-                alert('すべての項目を入力してください！');
-                return false;
-            }
-            return true;
+        function setNewGenerationDate() {
+            const now = new Date();
+            currentGeneratedDateText = now.getFullYear() + '/' + 
+                             String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                             String(now.getDate()).padStart(2, '0') + ' ' + 
+                             String(now.getHours()).padStart(2, '0') + ':' + 
+                             String(now.getMinutes()).padStart(2, '0');
         }
 
         okButton.addEventListener('click', function() {
-            if (checkInputs()) {
-                savePhotographer(document.getElementById('photographer').value); 
-                saveCurrentInputs(); 
-                isEditMode = false; 
-                cameraInput.click();
-            }
+            savePhotographer(document.getElementById('photographer').value); 
+            saveCurrentInputs(); 
+            isEditMode = false; 
+            cameraInput.click();
         });
 
         editButton.addEventListener('click', function() {
-            if (checkInputs()) {
-                savePhotographer(document.getElementById('photographer').value); 
-                saveCurrentInputs(); 
-                isEditMode = true; 
-                editFileInput.click();
-            }
+            savePhotographer(document.getElementById('photographer').value); 
+            saveCurrentInputs(); 
+            isEditMode = true; 
+            editFileInput.click();
         });
 
         cameraInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
+                setNewGenerationDate(); 
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     currentOriginalImageSrc = e.target.result;
-                    drawBlackboard(currentOriginalImageSrc);
+                    previewPhoto.src = currentOriginalImageSrc; 
+                    updateFastPreview(); 
                 };
                 reader.readAsDataURL(file);
             }
@@ -434,37 +476,14 @@
         editFileInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
+                setNewGenerationDate(); 
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     currentOriginalImageSrc = e.target.result;
-                    drawBlackboard(currentOriginalImageSrc);
+                    previewPhoto.src = currentOriginalImageSrc; 
+                    updateFastPreview(); 
                 };
                 reader.readAsDataURL(file);
-            }
-        });
-
-        downloadButton.addEventListener('click', function() {
-            // iPhone向けにアラート案内を強化
-            alert('【iPhoneをご使用の方へ】\nブラウザの制限により自動保存されない場合は、表示されている写真を「長押し」して「"写真"に追加」を選んで保存してください！');
-            
-            const link = document.createElement('a');
-            const now = new Date();
-            const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
-            
-            link.href = finalImage.src;
-            link.download = fileName;
-            link.click();
-        });
-
-        shareButton.addEventListener('click', function() {
-            if (currentFileForShare) {
-                navigator.share({
-                    files: [currentFileForShare],
-                    title: '黒板写真',
-                    text: '黒板カメラアプリから共有された画像です'
-                }).catch(err => {
-                    console.log("共有がキャンセルされました", err);
-                });
             }
         });
     </script>
