@@ -710,27 +710,33 @@
         cameraInput.addEventListener('change', handleFileSelection);
         editFileInput.addEventListener('change', handleFileSelection);
 
-        // 描画確定・ダウンロード保存処理
-        // 描画確定・ダウンロード保存処理
+// 描画確定・ダウンロード保存処理
         commitMenuBtn.addEventListener('click', function() {
             if (!currentOriginalImageSrc) {
                 alert('写真が読み込まれていません。先にカメラ起動または写真編集を行ってください。');
                 return;
             }
+            
+            // --- ★ここから追加★ ---
+            // 裏側で作った「手書き合成済み」の画像データを、画面のプレビュー写真にセットします
+            const combinedDataUrl = canvas.toDataURL("image/jpeg", 0.90);
+            previewPhoto.src = combinedDataUrl;
+            // ------------------------
+
             const link = document.createElement('a');
             const now = new Date();
             const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
             
-            link.href = canvas.toDataURL("image/jpeg", 0.90);
+            link.href = combinedDataUrl; // ここも共通の変数にしておくと確実です
             link.download = fileName;
             link.click();
-            alert('描画を確定しました！');
+            alert('データを確定し、黒板合成写真を保存しました！');
 
-            // 描画内容は消さずに、手書き・消しゴムモード（透明なキャンバスのブロック）だけをオフにします
+            // 手書きモード（透明なキャンバスのブロック）をオフにします
+            // これにより、手書き線が見えたままiPhoneで長押し保存ができるようになります
             setMode("none"); 
         });
-
-
+        
         // ==========================================
         // 手書き＆消しゴム モード制御
         // ==========================================
