@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黒板カメラアプリ（履歴・復元フル装備版）</title>
+    <title>黒板カメラアプリ（日付切替・iPhone保存強化版）</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
         .form-group { margin-bottom: 15px; }
@@ -11,6 +11,11 @@
         input[type="text"], select { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
         textarea { width: 100%; padding: 10px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: sans-serif; }
         
+        /* 日付スイッチ用のスタイル */
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: white; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
+        .checkbox-group label { margin-bottom: 0; cursor: pointer; font-size: 16px; }
+
         .history-container { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
         .history-btn { background-color: #e0e0e0; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .delete-history { color: red; font-weight: bold; margin-left: 5px; cursor: pointer; }
@@ -24,9 +29,15 @@
         #shareButton { background-color: #ff9800; display: none; }
         
         #resultContainer { margin-top: 20px; text-align: center; }
-        #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        canvas { display: none; }
         
+        /* iPhoneで長押ししやすくするための画像コンテナ設定 */
+        .image-wrapper { position: relative; display: inline-block; max-width: 100%; margin-top: 10px; }
+        #finalImage { max-width: 100%; height: auto; display: none; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); -webkit-touch-callout: default; } /* iPhoneの長押しメニューを許可 */
+        
+        /* iPhone用：画像の上に被せる「長押しガイド」表示 */
+        #longPressGuide { display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; pointer-events: none; white-space: nowrap; }
+        
+        canvas { display: none; }
         .hidden-input { display: none !important; }
     </style>
 </head>
@@ -45,7 +56,8 @@
         <select id="areaSelect" onchange="updatePropertyOptions()">
             <option value="">-- エリアを選択してください --</option>
             <option value="市内">市内</option>
-            <option value="東大阪">東大阪</option> </select>
+            <option value="東大阪">東大阪</option> 
+        </select>
     </div>
 
     <div class="form-group">
@@ -66,6 +78,11 @@
         <textarea id="detail" rows="3" placeholder="例：状況&#10;寸法&#10;処置"></textarea>
     </div>
 
+    <div class="checkbox-group">
+        <input type="checkbox" id="showDateCheck" checked onchange="handleDateSwitchChange()">
+        <label for="showDateCheck">黒板に撮影日時を入れる</label>
+    </div>
+
     <button id="okButton">OK（新規カメラ撮影）</button>
     <button id="editButton">編集（既存の画像を選択して黒板上書き）</button>
     <button id="restoreButton">直前に入力した内容を呼び出す</button>
@@ -78,7 +95,9 @@
 
     <div id="resultContainer">
         <p id="statusText"></p>
-        <img id="finalImage" alt="完成写真">
+        <div class="image-wrapper">
+            <img id="finalImage" alt="完成写真">
+            <div id="longPressGuide">☝ 画像を長押しで写真に保存できます</div> </div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -93,6 +112,7 @@
         const cameraInput = document.getElementById('cameraInput');
         const editFileInput = document.getElementById('editFileInput');
         const finalImage = document.getElementById('finalImage');
+        const longPressGuide = document.getElementById('longPressGuide');
         const statusText = document.getElementById('statusText');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -144,6 +164,13 @@
             }
         }
 
+        // --- 日付スイッチが切り替わった時に、もし画像があれば再描画する処理 ---
+        function handleDateSwitchChange() {
+            if (currentOriginalImageSrc) {
+                drawBlackboard(currentOriginalImageSrc);
+            }
+        }
+
         // --- 撮影者名の履歴管理処理 ---
         let photographerList = JSON.parse(localStorage.getItem('photographerHistory')) || [];
 
@@ -187,7 +214,8 @@
                 propertySelect: document.getElementById('propertySelect').value,
                 propertyRaw: document.getElementById('property').value,
                 location: document.getElementById('location').value,
-                detail: document.getElementById('detail').value
+                detail: document.getElementById('detail').value,
+                showDate: document.getElementById('showDateCheck').checked
             };
             localStorage.setItem('lastFormInputs', JSON.stringify(inputs));
         }
@@ -219,6 +247,9 @@
             
             document.getElementById('location').value = inputs.location || '';
             document.getElementById('detail').value = inputs.detail || '';
+            if (inputs.hasOwnProperty('showDate')) {
+                document.getElementById('showDateCheck').checked = inputs.showDate;
+            }
         });
 
         // --- オールクリアボタンの処理 ---
@@ -234,6 +265,7 @@
                 document.getElementById('property').style.display = 'none';
                 document.getElementById('location').value = '';
                 document.getElementById('detail').value = '';
+                document.getElementById('showDateCheck').checked = true; // デフォルトに戻す
             }
         });
 
@@ -288,20 +320,12 @@
                 // 2. 右側に写真
                 ctx.drawImage(img, srcX, 0, originalPhotoWidth, img.height, boardWidth, 0, originalPhotoWidth, img.height);
 
-                // 3. 日付取得
-                const now = new Date();
-                const dateText = now.getFullYear() + '/' + 
-                                 String(now.getMonth() + 1).padStart(2, '0') + '/' + 
-                                 String(now.getDate()).padStart(2, '0') + ' ' + 
-                                 String(now.getHours()).padStart(2, '0') + ':' + 
-                                 String(now.getMinutes()).padStart(2, '0');
-
-                // 4. 文字サイズ設定（大きめ 0.080）
+                // 3. 文字サイズ設定（大きめ 0.080）
                 ctx.fillStyle = "#ffffff";
                 const fontSize = boardWidth * 0.080;
                 ctx.font = "bold " + fontSize + "px sans-serif";
 
-                // 5. 行間の設定（メリハリ比率）
+                // 4. 行間の設定（メリハリ比率）
                 const lineSpacing = canvas.height * 0.040;  
                 const itemSpacing = canvas.height * 0.040;  
                 const maxTextWidth = boardWidth * 0.90;
@@ -331,17 +355,27 @@
                 currentY += lineSpacing * 1.2;
                 currentY = drawTextLines(ctx, document.getElementById('detail').value, textX, currentY, maxTextWidth, lineSpacing);
 
-                // 6. 日付を右下に配置
-                ctx.fillText(dateText, boardWidth - ctx.measureText(dateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
+                // ★ 日付スイッチがONの場合のみ日付を右下に配置
+                if (document.getElementById('showDateCheck').checked) {
+                    const now = new Date();
+                    const dateText = now.getFullYear() + '/' + 
+                                     String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                                     String(now.getDate()).padStart(2, '0') + ' ' + 
+                                     String(now.getHours()).padStart(2, '0') + ':' + 
+                                     String(now.getMinutes()).padStart(2, '0');
+                    ctx.fillText(dateText, boardWidth - ctx.measureText(dateText).width - (boardWidth * 0.05), canvas.height - (canvas.height * 0.03));
+                }
 
-                // 7. 画面に表示 & 共有用データ作成
+                // 5. 画面に表示 & 共有用データ作成
                 canvas.toBlob(function(blob) {
+                    const now = new Date();
                     const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
                     
                     currentFileForShare = new File([blob], fileName, { type: "image/jpeg" });
                     
                     finalImage.src = URL.createObjectURL(blob);
                     finalImage.style.display = 'block';
+                    longPressGuide.style.display = 'block'; // ★iPhone用ガイドを表示
                     downloadButton.style.display = 'block';
                     
                     if (navigator.canShare && navigator.canShare({ files: [currentFileForShare] })) {
@@ -410,6 +444,9 @@
         });
 
         downloadButton.addEventListener('click', function() {
+            // iPhone向けにアラート案内を強化
+            alert('【iPhoneをご使用の方へ】\nブラウザの制限により自動保存されない場合は、表示されている写真を「長押し」して「"写真"に追加」を選んで保存してください！');
+            
             const link = document.createElement('a');
             const now = new Date();
             const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
@@ -417,7 +454,6 @@
             link.href = finalImage.src;
             link.download = fileName;
             link.click();
-            alert('端末への保存命令を出しました！');
         });
 
         shareButton.addEventListener('click', function() {
