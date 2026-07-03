@@ -711,6 +711,7 @@
         editFileInput.addEventListener('change', handleFileSelection);
 
         // 描画確定・ダウンロード保存処理
+        // 描画確定・ダウンロード保存処理
         commitMenuBtn.addEventListener('click', function() {
             if (!currentOriginalImageSrc) {
                 alert('写真が読み込まれていません。先にカメラ起動または写真編集を行ってください。');
@@ -723,7 +724,10 @@
             link.href = canvas.toDataURL("image/jpeg", 0.90);
             link.download = fileName;
             link.click();
-            alert('データを確定し、黒板合成写真を保存しました！');
+            alert('描画を確定しました！');
+
+            // 描画内容は消さずに、手書き・消しゴムモード（透明なキャンバスのブロック）だけをオフにします
+            setMode("none"); 
         });
 
 
