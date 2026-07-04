@@ -349,7 +349,7 @@
     <canvas id="canvas"></canvas>
 <div id="downloadOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; padding: 20px; box-sizing: border-box;">
         <p style="color: white; margin-bottom: 15px; font-weight: bold; font-size: 16px; text-align: center; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;">
-           画像を長押しして保存
+           内容確認して【画像長押し】で保存
         </p>
         <img id="overlayImage" style="max-width: 100%; max-height: 75%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <button id="closeOverlayBtn" style="margin-top: 25px; padding: 12px 30px; border: none; border-radius: 50px; background-color: #ef4444; color: white; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
@@ -404,7 +404,7 @@
             propertyInput.value = '';
 
             if (!selectedArea) {
-                propertySelect.innerHTML = '<option value="">エリアを先選択</option>';
+                propertySelect.innerHTML = '<option value="">先にエリアを選択</option>';
                 propertySelect.disabled = true;
                 return;
             }
@@ -544,7 +544,7 @@
                 
                 document.getElementById('photographer').value = '';
                 document.getElementById('areaSelect').value = '';
-                document.getElementById('propertySelect').innerHTML = '<option value="">エリアを先選択</option>';
+                document.getElementById('propertySelect').innerHTML = '<option value="">先にエリアを選択</option>';
                 document.getElementById('propertySelect').disabled = true;
                 document.getElementById('property').value = '';
                 document.getElementById('propertyInputWrapper').style.display = 'none';
@@ -706,7 +706,7 @@
 
             // 1つでも空の項目があれば警告を出して処理を中断する
             if (!photographer || !area || !property || !location || !detail) {
-                alert('【入力エラー】\n撮影者、エリア、物件略称、撮影現場、詳細をすべて入力してからカメラを起動してください。');
+                alert('入力欄をすべて埋めてください');
                 return;
             }
 
@@ -747,25 +747,38 @@
 // 描画確定・ダウンロード保存処理
         commitMenuBtn.addEventListener('click', function() {
             if (!currentOriginalImageSrc) {
-                alert('写真が読み込まれていません。先にカメラ起動または写真読込をしてください。');
+                alert('カメラ起動や写真編集から始めてください');
                 return;
             }
             
             // 裏側で作った「手書き合成済み」の画像データを取得
             const combinedDataUrl = canvas.toDataURL("image/jpeg", 0.90);
             
-            // 【変更箇所】オーバーレイ用の画像要素にセットして、画面に表示させる
+            // ポップアップ（オーバーレイ）の準備
             const overlay = document.getElementById('downloadOverlay');
+            const overlayText = overlay.querySelector('p'); // 案内文の要素を取得
             document.getElementById('overlayImage').src = combinedDataUrl;
+            
+            // iPhone・iPadか、それ以外（Android・PC）かで案内文を切り替える
+            const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isiOS) {
+                overlayText.innerText = "画像を長押しして保存してください";
+            } else {
+                overlayText.innerText = "画像が自動保存されました（保存されない場合は長押ししてください）";
+            }
+            
             overlay.style.display = 'flex'; // オーバーレイを表示
 
-            // PCやAndroid用の自動ダウンロード処理（残しておくと便利です）
+            // 【確実な自動保存処理】AndroidやPCで100%ダウンロードを走らせるための記述
             const link = document.createElement('a');
             const now = new Date();
             const fileName = "黒板写真_" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + "_" + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + ".jpg";
             link.href = combinedDataUrl;
             link.download = fileName;
-            link.click();
+            
+            document.body.appendChild(link); // 一時的に画面の裏側に追加
+            link.click();                     // クリックして自動保存を発火
+            document.body.removeChild(link);  // 用が済んだら削除
 
             // 手書きモード（透明なキャンバスのブロック）はオフに戻しておく
             setMode("none"); 
