@@ -404,7 +404,7 @@
             propertyInput.value = '';
 
             if (!selectedArea) {
-                propertySelect.innerHTML = '<option value="">先にエリアを選択</option>';
+                propertySelect.innerHTML = '<option value="">エリアを選択</option>';
                 propertySelect.disabled = true;
                 return;
             }
@@ -508,7 +508,7 @@
         restoreButton.addEventListener('click', function() {
             const savedData = localStorage.getItem('lastFormInputs');
             if (!savedData) {
-                alert('直前の入力データが見つかりません。');
+                alert('直前の入力データが見つかりません');
                 return;
             }
             
@@ -544,7 +544,7 @@
                 
                 document.getElementById('photographer').value = '';
                 document.getElementById('areaSelect').value = '';
-                document.getElementById('propertySelect').innerHTML = '<option value="">先にエリアを選択</option>';
+                document.getElementById('propertySelect').innerHTML = '<option value="">エリア</option>';
                 document.getElementById('propertySelect').disabled = true;
                 document.getElementById('property').value = '';
                 document.getElementById('propertyInputWrapper').style.display = 'none';
@@ -762,9 +762,9 @@
             // iPhone・iPadか、それ以外（Android・PC）かで案内文を切り替える
             const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             if (isiOS) {
-                overlayText.innerText = "画像を長押しして保存してください";
+                overlayText.innerText = "内容確認して【画像長押し】で保存";
             } else {
-                overlayText.innerText = "画像が自動保存されました（保存されない場合は長押ししてください）";
+                overlayText.innerText = "保存完了！　※保存されない場合は長押し保存";
             }
             
             overlay.style.display = 'flex'; // オーバーレイを表示
