@@ -734,8 +734,25 @@
                 reader.onload = function(e) {
                     currentOriginalImageSrc = e.target.result;
                     previewPhoto.src = currentOriginalImageSrc; 
-                    setMode("none"); // ★ここが実行されることで初期状態のタッチ無効化が効きます
+                    setMode("none"); 
                     updateFastPreview(); 
+
+                    // --- ★カメラ機能を安全に終了・解放させる処理を追加 ---
+                    try {
+                        // 1. inputの値をクリア
+                        cameraInput.value = "";
+                        
+                        // 2. 念のため要素を新しく作り直して、古いカメラセッションを完全に破棄する
+                        const newInput = cameraInput.cloneNode(true);
+                        cameraInput.parentNode.replaceChild(newInput, cameraInput);
+                        
+                        // 3. 変数の参照を新しいinputに更新し、イベントを再登録
+                        cameraInput = newInput;
+                        cameraInput.addEventListener('change', handleFileSelection);
+                    } catch (err) {
+                        console.log("カメラの解放処理でエラーが発生しました:", err);
+                    }
+                    // ----------------------------------------------------
                 };
                 reader.readAsDataURL(file);
             }
